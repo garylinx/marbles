@@ -145,9 +145,8 @@
                              k1="1" k2="0" k3="0" k4="0"
                              result="shadowedDOM" /> -->
 
-                <feGaussianBlur in="displaceRefract" result="softDisplaceRefract" stdDeviation="1" />
 
-                <feDisplacementMap in="shadowedDOM" in2="softDisplaceRefract"
+                <feDisplacementMap in="shadowedDOM" in2="displaceRefract"
                                    scale="200" xChannelSelector="R" yChannelSelector="G"
                                    result="refractedDom" />
 
@@ -155,12 +154,15 @@
                                    scale="200" xChannelSelector="R" yChannelSelector="G"
                                    result="reflectedDom" />
 
+                <feGaussianBlur in="reflectedDom" result="reflectedDomBlur" stdDeviation="2" />
+
+
                 <feComposite in="colorMap" in2="refractedDom" operator="over" result="colored" />
                 <!-- <feBlend in="colorMap" in2="refractedDom" operator="overlay" result="colored" /> -->
 
-                <feComposite in="reflectedDom" in2="colored"
+                <feComposite in="reflectedDomBlur" in2="colored"
                              operator="arithmetic"
-                             k1="0" k2="0.1" k3="1.0" k4="0"
+                             k1="0" k2="0.1" k3="0.9" k4="0"
                              result="finalOutput" />
             </filter>
         </defs>
