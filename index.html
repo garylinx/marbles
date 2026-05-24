@@ -60,6 +60,7 @@
             <filter id="marble-filter" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
                 <feImage id="displacementMap" result="displacementMap" preserveAspectRatio="none" />
                 <feImage id="shadowMap" result="shadowMap" preserveAspectRatio="none" />
+                <feImage id="colorMap" result="colorMap" preserveAspectRatio="none" />
 
                 <!-- 1. Multiply the shadow map onto the UN-DISTORTED original DOM -->
                 <feBlend in="shadowMap" in2="SourceGraphic" mode="multiply" result="shadowedDOM" />
@@ -81,12 +82,11 @@
 
     <script type="x-shader/x-fragment" id="frag">
         #define MARBLE_COUNT 2
+        #define ITERATIONS 2
         #define DISPLACEMENT_SCALE 100.0
         #define SCALE 0.1
-        #define RENDER_SCALE 1.0
         precision mediump float;
         uniform vec2 u_canvas_size;
-        uniform vec2 u_viewport_size;
         uniform vec3 u_marble_positions[MARBLE_COUNT];
         uniform mat3 u_marble_matrices[MARBLE_COUNT];
         uniform float u_marble_radii[MARBLE_COUNT];
@@ -94,266 +94,126 @@
         uniform vec3 u_pigment_colors[MARBLE_COUNT];
         uniform int u_mode;
 
-        // Hemispherical environment lighting
-        vec3 getHemisphere(vec3 rd) {
-            vec3 sky = vec3(0.85, 0.9, 1.0);
-            vec3 ground = vec3(0.15, 0.15, 0.15);
-            return mix(ground, sky, rd.y * 0.5 + 0.5); 
-        }
-
-        // Fresnel reflection factor (Schlick's Approximation)
-        float getFresnel(vec3 rd, vec3 n, float ior) {
-            float base = (1.0 - ior) / (1.0 + ior);
-            float r0 = base * base;
-            float cosTheta = max(0.0, dot(-rd, n));
-            return r0 + (1.0 - r0) * pow(max(0.0, 1.0 - cosTheta), 5.0);
-        }
 
         void main() {
-            vec2 uv = gl_FragCoord.xy / u_canvas_size;
-            vec2 window_coord = uv * u_viewport_size;
-            vec4 color = vec4(0.0);
-            
-            // Light setup for Mode 2
-            vec3 light_dir = normalize(vec3(0.3, -0.4, 1.0)); // Skewed direction to light
-            vec3 light_color = vec3(1.0, 0.98, 0.95);
+            vec4 color = vec4(0);
 
-            vec3 rp, rd;
-            
-            // Mode 2: Shadow ray (Floor -> Sky)
-            // Mode 0 & 1: Camera ray (Camera -> Scene)
-            if (u_mode == 2) {
-                rp = vec3(window_coord * SCALE, 0.0); 
-                rd = light_dir; 
-            } else {
-                rp = vec3(window_coord * SCALE, 50.0);
-                rd = vec3(0.0, 0.0, -1.0);
-            }
+            vec3 rp = vec3(gl_FragCoord.xy*SCALE, 50);
+            vec3 rd = vec3(0, 0, -1);
 
-            vec3 rd_original = rd;
-            
-            bool hit_marble = false;
-            int hit_marble_id = -1;
-            vec3 marble_enter_normal = vec3(0.0);
-            vec3 marble_center = vec3(0.0);
-            float marble_r_scaled = 0.0;
-            vec3 glass_col = vec3(1.0);
-            vec3 pigment_col = vec3(0.0);
-            
-            vec3 xvec = vec3(1.0, 0.0, 0.0);
-            vec3 yvec = vec3(0.0, 0.0, -1.0);
-            vec3 zvec = vec3(0.0, 1.0, 0.0);
-            
-            float f_min = -1.0;
-            vec3 final_shadow = vec3(1.0);
-            
-            // 1. Primary Ray Intersection
-            for(int marble_id = 0; marble_id < MARBLE_COUNT; marble_id++){
-                vec3 o = u_marble_positions[marble_id] * SCALE;
-                float r = u_marble_radii[marble_id] * SCALE;
-                
-                vec3 d = rp - o;
-                float a = dot(rd, rd);
-                float a_inv_2 = 1.0 / (2.0 * a);
-                float b = 2.0 * dot(d, rd);
-                float c = dot(d, d) - r * r;
-                float D = b * b - 4.0 * a * c;
-                
-                // Analytical caustic/penumbra based on ray distance to center (using vector rejection)
-                float dist_to_center = sqrt(max(0.0, dot(d, d) - (b * b) / (4.0 * a)));
-                float normalized_dist = dist_to_center / r;
-                
-                if (D > 0.0){
-                    float f_center = -b * a_inv_2;
-                    float f_diff = sqrt(D) * a_inv_2;
-                    float f1 = f_center - f_diff;
-                    float f2 = f_center + f_diff;
-                    
-                    if (u_mode == 2) {
-                        // Accumulate shadow data (ray passes entirely through)
-                        if (f2 > 0.0) {
-                            float t_in = max(0.0, f1);
-                            float t_out = f2;
-                            float d_in_glass = max(0.0, t_out - t_in);
-                            
-                            // Exponential volumetric absorption (Beer-Lambert)
-                            vec3 absorb_m = (vec3(1.0) - u_glass_colors[marble_id]) * 0.5 + (vec3(1.0) - u_pigment_colors[marble_id]) * 0.8;
-                            vec3 trans = exp(-absorb_m * d_in_glass);
-                            
-                            // Focused caustic light in center
-                            float caustic = pow(max(0.0, 1.0 - normalized_dist), 4.0) * 1.5;
-                            
-                            vec3 marble_shadow = clamp(trans + vec3(caustic), 0.0, 1.0);
-                            final_shadow = min(final_shadow, marble_shadow);
-                        }
-                    } else {
-                        // Camera intersection
+            for(int iteration=0;iteration<ITERATIONS;iteration++){
+
+                float f_min = -1.0;
+                vec3 o_min;
+                vec3 xvec = vec3(1, 0, 0);
+                vec3 yvec = vec3(0, 0, -1);
+                vec3 zvec = vec3(0, 1, 0);
+                vec3 glassColor = vec3(1.0);
+                vec3 pigmentColor = vec3(0.0);
+                float R = 50.0 * SCALE;
+
+                for(int marble_id=0;marble_id<MARBLE_COUNT;marble_id++){
+                    vec3 o = u_marble_positions[marble_id]*SCALE;
+                    float radius_val = u_marble_radii[marble_id]*SCALE;
+                    vec3 d = rp - o;
+                    float a = dot(rd, rd);
+                    float a_inv_2 = 1.0/2.0/a;
+                    float b = 2.0 * dot(d, rd);
+                    float c = dot(d, d) - radius_val*radius_val;
+                    float D = b*b - 4.0*a*c;
+                    if (D>0.0){
+                        float f_center = -b * a_inv_2;
+                        float f_diff = sqrt(D) * a_inv_2;
+                        float f1 = f_center - f_diff;
+                        float f2 = f_center + f_diff;
                         float f = (f1 > 0.01) ? f1 : f2;
                         if (f > 0.01 && (f < f_min || f_min < 0.0)) {
                             f_min = f;
-                            hit_marble_id = marble_id;
-                            marble_center = o;
-                            marble_r_scaled = r;
+                            o_min = o;
+                            R = radius_val;
                             xvec = u_marble_matrices[marble_id][0];
                             yvec = u_marble_matrices[marble_id][1];
                             zvec = u_marble_matrices[marble_id][2];
-                            glass_col = u_glass_colors[marble_id];
-                            pigment_col = u_pigment_colors[marble_id];
-                        }
-                    }
-                } else if (u_mode == 2) {
-                    // Soft penumbra shadow for rays missing the sphere
-                    vec3 marble_shadow = vec3(smoothstep(1.0, 1.4, normalized_dist));
-                    final_shadow = min(final_shadow, marble_shadow);
-                }
-            }
-
-            // ---------------------------------------------------------
-            // MODE 2: SHADOW OUTPUT
-            // ---------------------------------------------------------
-            if (u_mode == 2) {
-                color = vec4(final_shadow * light_color, 1.0);
-                // Linear to sRGB
-                color.rgb = pow(max(color.rgb, vec3(0.0)), vec3(1.0 / 2.2));
-                gl_FragColor = color;
-                return;
-            }
-
-            // ---------------------------------------------------------
-            // MODE 0 & 1: CAMERA REFRACTION & COLOR
-            // ---------------------------------------------------------
-            if (hit_marble_id != -1) {
-                hit_marble = true;
-                rp = rp + rd * f_min;
-                marble_enter_normal = normalize(rp - marble_center);
-                
-                // 1. Refract into the glass
-                float cosf = dot(rd, marble_enter_normal);
-                vec3 sinvec = rd - cosf * marble_enter_normal;
-                float N = 1.5;
-                float cosf2 = N*N - dot(sinvec, sinvec);
-                if (cosf2 > 0.0){
-                    rd = normalize(sinvec + marble_enter_normal * sqrt(cosf2) * sign(cosf));
-                } else {
-                    rd = normalize(rd - 2.0 * cosf * marble_enter_normal);
-                }
-                
-                float dist_traveled = -2.0 * dot(rd, rp - marble_center);
-                
-                // 2. Trace interior pigment parabola
-                float A = 1.0; 
-                float B = 0.2; 
-                float rdx = dot(rd, xvec) / marble_r_scaled;
-                float rdy = dot(rd, yvec);
-                float rpx = dot(rp - marble_center, xvec) / marble_r_scaled;
-                float rpy = dot(rp - marble_center, yvec);
-
-                float a_vein = A * (rdx * rdx);
-                float b_vein = 2.0 * A * rpx * rdx - rdy;
-                float c_vein = A * (rpx * rpx - 1.0) - rpy;
-
-                float D_vein = b_vein * b_vein - 4.0 * a_vein * c_vein;
-                float f_vein = -1.0;
-                vec3 vein_normal = vec3(0.0);
-
-                if (D_vein >= 0.0) {
-                    float sqrtD = sqrt(D_vein);
-                    float den1 = -b_vein - sqrtD;
-                    float den2 = -b_vein + sqrtD;
-                    float f1 = (abs(den1) > 0.0001) ? (2.0 * c_vein) / den1 : -1.0;
-                    float f2 = (abs(den2) > 0.0001) ? (2.0 * c_vein) / den2 : -1.0;
-                    float f = f1;
-                    if (f2 > 0.0 && (f < 0.0 || f2 < f)) f = f2;
-                    
-                    if (f > 0.01 && f < dist_traveled) {
-                        vec3 relative_hit_pos = rp + rd * f - marble_center;
-                        if (abs(dot(relative_hit_pos, zvec)) < (1.0 - rpx*rpx) * B * marble_r_scaled) {
-                            f_vein = f;
-                            float hit_x = dot(relative_hit_pos, xvec);
-                            vein_normal = normalize((2.0 * A * hit_x / (marble_r_scaled * marble_r_scaled)) * xvec - yvec);
-                            if(dot(rd, vein_normal) > 0.0) vein_normal = -vein_normal;
+                            glassColor = u_glass_colors[marble_id];
+                            pigmentColor = u_pigment_colors[marble_id];
                         }
                     }
                 }
+
+                bool inside = false;
+
+                if(f_min >= 0.0){
+                    rp = rp + rd * f_min;
+                    vec3 n = normalize(rp - o_min);
+                    float cosf = dot(rd, n);
+                    vec3 sinvec = rd - cosf * n;
+                    float N = 1.5;
+                    if (cosf > 0.0) N = 1.0/N;
+                    else inside = true;
+                    float cosf2 = N*N*dot(rd, rd) - dot(sinvec, sinvec);
+                    if (cosf2 > 0.0){
+                        rd = sinvec + n * sqrt(cosf2) * sign(cosf);
+                    } else {
+                        rd = sinvec - n * cosf;
+                    }
+                    rd = normalize(rd);
+                }
+
+                // Inside the marble
+                f_min=-1.0;
                 
-                // 3. Trace interior rotating bubbles
-                bool hit_bubble = false;
-                vec3 bubble_local = vec3(0.3, 0.3, 0.0) * marble_r_scaled; // Local space offset
-                float bubble_r = 0.15 * marble_r_scaled;
-                vec3 bubble_world = marble_center + (mat3(xvec, yvec, zvec) * bubble_local);
-                
-                vec3 d_bub = rp - bubble_world;
-                float a_bub = dot(rd, rd);
-                float b_bub = 2.0 * dot(d_bub, rd);
-                float c_bub = dot(d_bub, d_bub) - bubble_r * bubble_r;
-                float D_bub = b_bub * b_bub - 4.0 * a_bub * c_bub;
-                
-                if (D_bub > 0.0) {
-                    float t_bub = (-b_bub - sqrt(D_bub)) / (2.0 * a_bub);
-                    if (t_bub > 0.01 && t_bub < dist_traveled) {
-                        hit_bubble = true;
+                if(inside){
+                    float A = 1.0; // 0.0 = flat plane, > 0.0 = parabola
+                    float B = 0.2; // 0.0 = flat plane, > 0.0 = parabola
+
+                    float rdx = dot(rd, xvec) / R;
+                    float rdy = dot(rd, yvec);
+                    float rpx = dot(rp - o_min, xvec) / R;
+                    float rpy = dot(rp - o_min, yvec);
+
+                    float a = A * (rdx * rdx);
+                    float b = 2.0 * A * rpx * rdx - rdy;
+                    float c = A * (rpx * rpx - 1.0) - rpy;
+
+                    float D = b * b - 4.0 * a * c;
+
+                    vec3 n = vec3(0);
+
+                    if (D >= 0.0) {
+                        float sqrtD = sqrt(D);
+                        float den1 = -b - sqrtD;
+                        float den2 = -b + sqrtD;
+                        float f1 = (2.0 * c) / den1;
+                        float f2 = (abs(den2) > 0.0001) ? (2.0 * c) / den2 : -1.0;
+                        float f = f1;
+                        if (f2 > 0.0 && f2 < f) f = f2;
+                        if (f > 0.01 && (f < f_min || f_min < 0.0)) {
+                            vec3 relative_hit_pos = rp + rd * f - o_min;
+                            if ( abs(dot(relative_hit_pos, zvec)) < (1.0 - rpx*rpx) * B * R) {
+                                f_min = f;
+                                float hit_x = dot(relative_hit_pos, xvec);
+                                n = normalize((2.0 * A * hit_x / (R * R)) * xvec - yvec);
+                            }
+                        }
+                    }
+
+                    // Base glass color
+                    color.rgb = glassColor;
+                    color.a = 1.0;
+
+                    if(f_min>0.0){
+                        float density = abs(dot(rd, n));
+                        color.rgb = mix(glassColor, pigmentColor, density);
                     }
                 }
 
-                // 4. Exit marble refraction
-                if (hit_bubble) {
-                    rd = getHemisphere(rd); // Fake bubble interior reflection
-                } else {
-                    float t_exit = -2.0 * dot(rd, rp - marble_center);
-                    if (t_exit > 0.01) {
-                        rp = rp + rd * t_exit;
-                        vec3 n_exit = normalize(rp - marble_center);
-                        
-                        float cosf_exit = dot(rd, n_exit);
-                        vec3 sinvec_exit = rd - cosf_exit * n_exit;
-                        float N_exit = 1.0 / 1.5;
-                        float cosf2_exit = N_exit*N_exit - dot(sinvec_exit, sinvec_exit);
-                        if (cosf2_exit > 0.0) {
-                            rd = normalize(sinvec_exit + n_exit * sqrt(cosf2_exit) * sign(cosf_exit));
-                        } else {
-                            rd = normalize(rd - 2.0 * cosf_exit * n_exit); // TIR
-                        }
-                    }
-                }
-                
-                // Mode 1 Output (Color, Fresnel, Beer-Lambert)
-                if (u_mode == 1) {
-                    // Volumetric absorption
-                    vec3 absorb_coef = (vec3(1.0) - glass_col) * 0.03;
-                    float pigment_density = (f_vein > 0.0) ? abs(dot(rd, vein_normal)) * 20.0 : 0.0;
-                    vec3 pigment_absorb = (vec3(1.0) - pigment_col) * pigment_density;
-                    
-                    vec3 transmission = exp(-(absorb_coef * dist_traveled) - pigment_absorb);
-                    
-                    // Hemisphere reflection & Fresnel
-                    vec3 refl_dir = reflect(rd_original, marble_enter_normal);
-                    vec3 reflection_color = getHemisphere(refl_dir);
-                    float fresnel = getFresnel(rd_original, marble_enter_normal, 1.5);
-                    
-                    vec3 final_glass_color = mix(transmission * glass_col, reflection_color, fresnel);
-                    
-                    // Compute semi-transparent glass alpha based on Fresnel
-                    float alpha = mix(0.25, 0.95, fresnel);
-                    if (f_vein > 0.0) {
-                        alpha = max(alpha, 0.75); // Pigment vein is more opaque
-                    }
-                    if (hit_bubble) {
-                        alpha = max(alpha, 0.85); // Bubbles are visible
-                    }
-                    color = vec4(final_glass_color, alpha);
-                }
             }
+
             
-            // Mode 0 Output (Displacement UVs)
-            if (u_mode == 0) {
+            if(u_mode==0){
                 rp = rd / rd.z * rp.z + rp;
-                color.xy = (rp.xy - window_coord * SCALE) / DISPLACEMENT_SCALE + 0.5;
-                color.zw = vec2(0.5, 1.0);
-            }
-            
-            // Linear to sRGB output for colors
-            if (u_mode == 1) {
-                color.rgb = pow(max(color.rgb, vec3(0.0)), vec3(1.0 / 2.2));
+                color.xy = (rp.xy - gl_FragCoord.xy*SCALE) / DISPLACEMENT_SCALE + 0.5;
+                color.a=1.0;
             }
 
             gl_FragColor = color;
@@ -363,14 +223,9 @@
     <script>
         const container = document.getElementById('container');
         const canvas = document.createElement('canvas');
-        canvas.id = 'onscreen';
-        document.body.appendChild(canvas);
+        const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: true });
 
-        const offscreenCanvas = document.createElement('canvas');
-        offscreenCanvas.width = 512;
-        offscreenCanvas.height = 512;
-
-        function createShader(gl, type, sourceId) {
+        function createShader(type, sourceId) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, document.getElementById(sourceId).textContent.trim());
             gl.compileShader(shader);
@@ -378,46 +233,37 @@
             console.error(gl.getShaderInfoLog(shader));
         }
 
-        function linkProgram(gl, shaders) {
+        function linkProgram(shaders) {
             const program = gl.createProgram();
             for (let shader of shaders) gl.attachShader(program, shader);
             gl.linkProgram(program);
             return program;
         }
 
-        function initWebGL(canvasEl) {
-            const gl = canvasEl.getContext('webgl', { preserveDrawingBuffer: true, alpha: true });
-            if (!gl) return null;
-            
-            const vertShader = createShader(gl, gl.VERTEX_SHADER, 'vert');
-            const fragShader = createShader(gl, gl.FRAGMENT_SHADER, 'frag');
-            const program = linkProgram(gl, [vertShader, fragShader]);
-            gl.useProgram(program);
-            
-            // Fullscreen Quad Geometry
-            const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
-            const buffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-            const a_position = gl.getAttribLocation(program, 'a_position');
-            gl.enableVertexAttribArray(a_position);
-            gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
-            
-            // Declare uniform Locations
-            const u_resolution = gl.getUniformLocation(program, 'u_canvas_size');
-            const u_viewport_size = gl.getUniformLocation(program, 'u_viewport_size');
-            const u_marble_positions = gl.getUniformLocation(program, 'u_marble_positions');
-            const u_marble_matrices = gl.getUniformLocation(program, 'u_marble_matrices');
-            const u_marble_radii = gl.getUniformLocation(program, 'u_marble_radii');
-            const u_glass_colors = gl.getUniformLocation(program, 'u_glass_colors');
-            const u_pigment_colors = gl.getUniformLocation(program, 'u_pigment_colors');
-            const u_mode = gl.getUniformLocation(program, 'u_mode');
-            
-            return { gl, program, uniforms: { u_resolution, u_viewport_size, u_marble_positions, u_marble_matrices, u_marble_radii, u_glass_colors, u_pigment_colors, u_mode } };
-        }
+        const vertShader = createShader(gl.VERTEX_SHADER, 'vert');
+        const fragShader = createShader(gl.FRAGMENT_SHADER, 'frag');
+        const program = linkProgram([vertShader, fragShader]);
+        gl.useProgram(program);
 
-        const onscreen = initWebGL(canvas);
-        const offscreen = initWebGL(offscreenCanvas);
+        // Fullscreen Quad Geometry
+        const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        const a_position = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(a_position);
+        gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+
+        // Declare uniform Locations
+        const u_resolution = gl.getUniformLocation(program, 'u_canvas_size');
+        const u_marble_positions = gl.getUniformLocation(program, 'u_marble_positions');
+        const u_marble_matrices = gl.getUniformLocation(program, 'u_marble_matrices');
+        const u_marble_radii = gl.getUniformLocation(program, 'u_marble_radii');
+        const u_glass_colors = gl.getUniformLocation(program, 'u_glass_colors');
+        const u_pigment_colors = gl.getUniformLocation(program, 'u_pigment_colors');
+        const u_mode = gl.getUniformLocation(program, 'u_mode');
+
+
 
         // State Tracking (Identity matrix & tunable properties)
         const state = {
@@ -627,14 +473,15 @@
         const displacementMap = document.getElementById('displacementMap');
         const shadowMap = document.getElementById('shadowMap');
 
-        function setUniforms(webglObj, canvasWidth, canvasHeight, uModeVal) {
-            const { gl, program, uniforms } = webglObj;
-            gl.useProgram(program);
-            
-            gl.uniform2f(uniforms.u_resolution, canvasWidth, canvasHeight);
-            gl.uniform2f(uniforms.u_viewport_size, window.innerWidth, window.innerHeight);
-            gl.uniform1i(uniforms.u_mode, uModeVal);
-            
+
+        // Render Loop
+        let frameCount = 0;
+        function loop(now) {
+            updatePhysics();
+
+
+            gl.uniform2f(u_resolution, canvas.width, canvas.height);
+
             const pos = [], radii = [], glass = [], pigment = [], mats = new Float32Array(18);
             state.marbles.forEach((m, i) => {
                 pos.push(m.x, window.innerHeight - m.y, m.z);
@@ -643,27 +490,13 @@
                 pigment.push(...m.pigmentColor);
                 mats.set(m.matrix, i * 9);
             });
-            
-            gl.uniform3fv(uniforms.u_marble_positions, new Float32Array(pos));
-            gl.uniform1fv(uniforms.u_marble_radii, new Float32Array(radii));
-            gl.uniform3fv(uniforms.u_glass_colors, new Float32Array(glass));
-            gl.uniform3fv(uniforms.u_pigment_colors, new Float32Array(pigment));
-            gl.uniformMatrix3fv(uniforms.u_marble_matrices, false, mats);
-        }
 
-        // Render Loop
-        let frameCount = 0;
-        function loop(now) {
-            updatePhysics();
+            gl.uniform3fv(u_marble_positions, new Float32Array(pos));
+            gl.uniform1fv(u_marble_radii, new Float32Array(radii));
+            gl.uniform3fv(u_glass_colors, new Float32Array(glass));
+            gl.uniform3fv(u_pigment_colors, new Float32Array(pigment));
+            gl.uniformMatrix3fv(u_marble_matrices, false, mats);
 
-            // Render onscreen (Mode 1: Color Pass) at full screen resolution
-            if (onscreen) {
-                onscreen.gl.viewport(0, 0, canvas.width, canvas.height);
-                onscreen.gl.clearColor(0.0, 0.0, 0.0, 0.0);
-                onscreen.gl.clear(onscreen.gl.COLOR_BUFFER_BIT);
-                setUniforms(onscreen, canvas.width, canvas.height, 1);
-                onscreen.gl.drawArrays(onscreen.gl.TRIANGLES, 0, 3);
-            }
 
             // Check if marbles are moving or dragging (with settle frames)
             let isMoving = false;
@@ -680,26 +513,19 @@
                 isMoving = true;
             }
 
-            // Only render and update the SVG filter if marbles are moving or on initialization
-            if (offscreen && (isMoving || frameCount < 60)) {
-                // Render offscreen Mode 0 (Displacement Map)
-                offscreen.gl.viewport(0, 0, 512, 512);
-                offscreen.gl.clearColor(0.5, 0.5, 0.5, 1.0);
-                offscreen.gl.clear(offscreen.gl.COLOR_BUFFER_BIT);
-                setUniforms(offscreen, 512, 512, 0);
-                offscreen.gl.drawArrays(offscreen.gl.TRIANGLES, 0, 3);
-                displacementMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', offscreenCanvas.toDataURL('image/png'));
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            displacementMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
-                // Render offscreen Mode 2 (Shadow Map)
-                offscreen.gl.viewport(0, 0, 512, 512);
-                offscreen.gl.clearColor(1.0, 1.0, 1.0, 1.0); // Default fully lit (no shadow)
-                offscreen.gl.clear(offscreen.gl.COLOR_BUFFER_BIT);
-                setUniforms(offscreen, 512, 512, 2);
-                offscreen.gl.drawArrays(offscreen.gl.TRIANGLES, 0, 3);
-                shadowMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', offscreenCanvas.toDataURL('image/png'));
-            }
+            // Render offscreen Mode 2 (Shadow Map)
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, 1);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            shadowMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
-            frameCount++;
             requestAnimationFrame(loop);
         }
 
