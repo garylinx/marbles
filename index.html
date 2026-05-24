@@ -139,7 +139,7 @@
                 f_min=-1.0;
                 
                 if(inside){
-                    float A = 0.1; // 0.0 = flat plane, > 0.0 = parabola
+                    float A = 1.0; // 0.0 = flat plane, > 0.0 = parabola
                     float B = 0.2; // 0.0 = flat plane, > 0.0 = parabola
                     float R = 50.0 * SCALE;
 
@@ -154,6 +154,8 @@
 
                     float D = b * b - 4.0 * a * c;
 
+                    vec3 n = vec3(0);
+
                     if (D >= 0.0) {
                         float sqrtD = sqrt(D);
                         float den1 = -b - sqrtD;
@@ -166,10 +168,15 @@
                             vec3 relative_hit_pos = rp + rd * f - o_min;
                             if ( abs(dot(relative_hit_pos, zvec)) < (1.0 - rpx*rpx) * B * R) {
                                 f_min = f;
-                                color.r = 1.0;
-                                color.a = 1.0;
+                                float hit_x = dot(relative_hit_pos, xvec);
+                                n = normalize((2.0 * A * hit_x / (R * R)) * xvec - yvec);
                             }
                         }
+                    }
+
+                    if(f_min>0.0){
+                        color.r = abs(dot(rd, n));
+                        color.a = 1.0;
                     }
                 }
 
