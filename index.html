@@ -13,11 +13,11 @@
         }
 
         #container {
+            color: rgb(0, 0, 0);
             width: 100vw;
             height: 100vh;
             display: flex;
             filter: url(#marble-filter);
-            background-color: #eeeeee;
         }
 
         #content {
@@ -59,15 +59,17 @@
         <defs>
             <filter id="marble-filter" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
                 <feImage id="displaceRefract" result="displaceRefract" preserveAspectRatio="none" />
-                <feImage id="displaceReflect" result="displaceReflect" preserveAspectRatio="none" />
+                <!-- <feImage id="displaceReflect" result="displaceReflect" preserveAspectRatio="none" /> -->
                 <feImage id="shadowMap" result="shadowMap" preserveAspectRatio="none" />
                 <feImage id="colorMap" result="colorMap" preserveAspectRatio="none" />
 
                 <feGaussianBlur in="shadowMap" result="softShadowMap" stdDeviation="8" />
 
                 <feBlend in="softShadowMap" in2="SourceGraphic" mode="multiply" result="shadowedDOM" />
+                
+                <feGaussianBlur in="displaceRefract" result="softDisplaceRefract" stdDeviation="1" />
 
-                <feDisplacementMap in="shadowedDOM" in2="displaceRefract"
+                <feDisplacementMap in="shadowedDOM" in2="softDisplaceRefract"
                                    scale="300" xChannelSelector="R" yChannelSelector="G"
                                    result="refractedDom" />
 
@@ -102,8 +104,6 @@
         // 1: displacement map for reflection
 
         void main() {
-
-         
             vec4 color = vec4(1.0);
 
             if(u_mode==2){
@@ -117,8 +117,12 @@
 
             if(u_mode==3){
                 rp = vec3(uv, 0);
-                rd = vec3(1, 1, 1);
+                rd = vec3(-1, 1, 2);
             }
+
+            vec3 firstNormal = vec3(0);
+            vec3 firstRayDirection = normalize(rd);
+
 
             for(int iteration=0;iteration<ITERATIONS;iteration++){
 
@@ -166,6 +170,7 @@
                 if(f_min >= 0.0){
                     rp = rp + rd * f_min;
                     vec3 n = normalize(rp - o_min);
+                    if(firstNormal.z==0.0) firstNormal = n;
                     float cosf = dot(rd, n);
                     vec3 sinvec = rd - cosf * n;
                     float N = 1.5;
@@ -232,13 +237,13 @@
 
                     if(f_min>0.0){
                         color.rgb = mix(color.rgb, coreColor, abs(dot(rd, n)));
-                        color.a = 1.0;
+                        color.a = 2.0;
                         inside = false;
                         rp = rp + rd * f_min;
                     }
 
                     if(!inside){
-                        volume = distance(lastEntry, rp)*0.01;
+                        volume = distance(lastEntry, rp)*0.05;
                     }
 
 
@@ -247,9 +252,20 @@
                         color.r *= pow(glassColor.r, volume);
                         color.g *= pow(glassColor.g, volume);
                         color.b *= pow(glassColor.b, volume);
-                        color.a = 1.0-(1.0 - color.a)*exp(-volume);
+                        color.a = 1.0-(1.0 - color.a)*exp(-volume*0.1);
                     }
                 }
+
+                 if(u_mode==2 || u_mode==3){
+                    float highlight = dot(firstNormal, -firstRayDirection);
+                    if(u_mode==2){
+                        highlight += pow(1.0 - highlight, 5.0) * firstRayDirection.z * 5.0;
+                    }
+                    highlight = pow(highlight, 5.0) * 0.1;
+                  
+                    color = mix(color, color + vec4(1), highlight);
+                }
+
             }
 
             
@@ -260,7 +276,7 @@
                 color.a=1.0;
             }
 
-            
+           
             gl_FragColor = color;
         }
     </script>
@@ -516,7 +532,7 @@
         }
 
         const displaceRefract = document.getElementById('displaceRefract');
-        const displaceReflect = document.getElementById('displaceReflect');
+        // const displaceReflect = document.getElementById('displaceReflect');
         const colorMap = document.getElementById('colorMap');
         const shadowMap = document.getElementById('shadowMap');
 
