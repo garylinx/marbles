@@ -585,7 +585,7 @@
             const [m1, m2] = state.marbles;
             const dx = m1.x - m2.x, dy = m1.y - m2.y, dz = m1.z - m2.z;
             const dist = Math.hypot(dx, dy, dz);
-            const minDist = m1.r + m2.r;
+            const minDist = m1.r + m2.r  + 1;
 
             if (dist < minDist && dist > 0.0001) {
                 const nx = dx / dist, ny = dy / dist, nz = dz / dist;
@@ -675,6 +675,12 @@
         const colorMap = document.getElementById('colorMap');
         const shadowMap = document.getElementById('shadowMap');
 
+        const MARBLE_COUNT = 2;
+        const posData = new Float32Array(MARBLE_COUNT * 3);
+        const radiiData = new Float32Array(MARBLE_COUNT);
+        const glassData = new Float32Array(MARBLE_COUNT * 3);
+        const coreData = new Float32Array(MARBLE_COUNT * 3);
+        const matsData = new Float32Array(MARBLE_COUNT * 9);
 
         // Render Loop
         let frameCount = 0;
@@ -682,21 +688,20 @@
             updatePhysics();
 
 
-            const pos = [], radii = [], glass = [], core = [], mats = new Float32Array(18);
             state.marbles.forEach((m, i) => {
-                pos.push(m.x, window.innerHeight - m.y, m.z);
-                radii.push(m.r);
-                glass.push(...m.glassColor);
-                core.push(...m.coreColor);
-                mats.set(m.matrix, i * 9);
+                posData[i * 3] = m.x; posData[i * 3 + 1] = window.innerHeight - m.y; posData[i * 3 + 2] = m.z;
+                radiiData[i] = m.r;
+                glassData[i * 3] = m.glassColor[0]; glassData[i * 3 + 1] = m.glassColor[1]; glassData[i * 3 + 2] = m.glassColor[2];
+                coreData[i * 3] = m.coreColor[0]; coreData[i * 3 + 1] = m.coreColor[1]; coreData[i * 3 + 2] = m.coreColor[2];
+                matsData.set(m.matrix, i * 9);
             });
 
             gl.uniform2f(u_canvas_size, state.width, state.height);
-            gl.uniform3fv(u_marble_positions, new Float32Array(pos));
-            gl.uniform1fv(u_marble_radii, new Float32Array(radii));
-            gl.uniform3fv(u_glass_colors, new Float32Array(glass));
-            gl.uniform3fv(u_core_colors, new Float32Array(core));
-            gl.uniformMatrix3fv(u_marble_matrices, false, mats);
+            gl.uniform3fv(u_marble_positions, posData);
+            gl.uniform1fv(u_marble_radii, radiiData);
+            gl.uniform3fv(u_glass_colors, glassData);
+            gl.uniform3fv(u_core_colors, coreData);
+            gl.uniformMatrix3fv(u_marble_matrices, false, matsData);
 
 
             // Check if marbles are moving or dragging (with settle frames)
