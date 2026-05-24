@@ -350,21 +350,21 @@
                 if (m.isDragging) {
                     const tx = state.mouseX - state.dragOffsetX;
                     const ty = state.mouseY - state.dragOffsetY;
-                    m.vx = tx - m.x; 
+                    m.vx = tx - m.x;
                     m.vy = ty - m.y;
-                    m.x = tx; 
+                    m.x = tx;
                     m.y = ty;
-                    
+
                     const targetZ = 200; // Lift off ground when dragged
                     m.vz = (targetZ - m.z) * 0.15;
                     m.z += m.vz;
                 } else {
                     m.vz -= 0.8; // Gravity
-                    
+
                     // Air/Rolling friction
                     m.vx *= 0.985;
                     m.vy *= 0.985;
-                    m.vz *= 0.99; 
+                    m.vz *= 0.99;
 
                     m.x += m.vx;
                     m.y += m.vy;
@@ -406,7 +406,7 @@
                 if (velAlongNormal < 0) {
                     const restitution = 0.8; // Bounciness
                     const j = -(1 + restitution) * velAlongNormal / (1 / m1.mass + 1 / m2.mass);
-                    
+
                     const impulseX = j * nx;
                     const impulseY = j * ny;
                     const impulseZ = j * nz;
@@ -428,11 +428,11 @@
             state.marbles.forEach(m => {
                 if (!m.isDragging) {
                     // Floor Collision
-                    if (m.z < m.r) { 
-                        m.z = m.r; 
+                    if (m.z < m.r) {
+                        m.z = m.r;
                         // CRITICAL FIX: Threshold to stop micro-bounces
                         if (m.vz < -2.0) {
-                            m.vz *= -0.55; 
+                            m.vz *= -0.55;
                         } else {
                             m.vz = 0; // True rest state
                             m.vx *= 0.95; // Added ground friction
@@ -443,7 +443,7 @@
                     // Wall Collisions
                     if (m.x < m.r) { m.x = m.r; m.vx *= -0.8; }
                     else if (m.x > window.innerWidth - m.r) { m.x = window.innerWidth - m.r; m.vx *= -0.8; }
-                    
+
                     if (m.y < m.r) { m.y = m.r; m.vy *= -0.8; }
                     else if (m.y > window.innerHeight - m.r) { m.y = window.innerHeight - m.r; m.vy *= -0.8; }
                 }
@@ -454,7 +454,7 @@
                     const angle = speedXY / m.r;
                     const c = Math.cos(angle / 2);
                     const s = Math.sin(angle / 2) / speedXY;
-                    
+
                     // Your quaternion math is perfect here
                     m.q = qMul([c, -m.vy * s, m.vx * s, 0], m.q);
                     m.matrix = qToMat(m.q);
