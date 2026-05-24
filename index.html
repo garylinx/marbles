@@ -4,52 +4,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Refraction Glass Marble</title>
+    <title>WebGL Refraction Glass Marbles!</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
+            /* Summer white / Soft cream Japanese base */
+            background-color: #f7f5f0;
         }
 
         #container {
-            color: rgb(0, 0, 0);
+            position: relative;
             width: 100vw;
             height: 100vh;
             display: flex;
+            overflow: hidden;
             filter: url(#marble-filter);
         }
 
+        /* Soft Summer Ambient Glows */
+        .bg-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.5;
+            z-index: 2;
+        }
+
+        .bg-glow-1 {
+            top: -10%;
+            left: 15%;
+            width: 55vw;
+            height: 55vw;
+            /* Clear skies blue */
+            background: radial-gradient(circle, #a2d2ff 0%, transparent 70%);
+        }
+
+        .bg-glow-2 {
+            bottom: -10%;
+            right: 15%;
+            width: 55vw;
+            height: 55vw;
+            /* Soft sunset orange */
+            background: radial-gradient(circle, #ffb703 0%, transparent 70%);
+        }
+
+        /* High-Contrast Floating Shapes (Refraction Bending) */
+        .bg-shape {
+            position: absolute;
+            opacity: 0.9;
+            z-index: 3;
+        }
+
+        .bg-shape-1 {
+            top: 22%;
+            left: 20%;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #ff6b35, #ffb703);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+
+        .bg-shape-2 {
+            bottom: 25%;
+            right: 22%;
+            width: 130px;
+            height: 130px;
+            /* Deep Indigo/Sea Blue */
+            background: linear-gradient(135deg, #0077b6, #90e0ef);
+            border-radius: 32px;
+            transform: rotate(15deg);
+        }
+
+        /* Minimalist Typography Layer */
         #content {
-            max-width: 760px;
+            max-width: 640px;
             margin: auto;
-            padding: 10px;
+            padding: 48px 32px;
             text-align: center;
             font-family: system-ui, -apple-system, sans-serif;
+            color: #1a2238;
+            z-index: 4;
         }
 
-        svg {
-            position: fixed;
-            left: 0;
-            top: 0;
+        ::selection {
+            background-color: rgb(255, 136, 0);
+            color: black;
+            /* Text color */
         }
 
-        canvas#onscreen {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 10;
+        #content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.02em;
+            color: #1a2238;
+        }
+
+        #content p {
+            font-size: 1rem;
+            line-height: 1.7;
+            /* Soft charcoal */
+            color: #5c677d;
+            margin: 0;
+            font-weight: 400;
         }
     </style>
 </head>
 
 <body>
     <div id="container">
+        <!-- Interactive Background Elements -->
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
+        <div class="bg-shape bg-shape-1"></div>
+        <div class="bg-shape bg-shape-2"></div>
+
+        <!-- Main Content Layer -->
         <div id="content">
-            <h1>GLASS MARBLE</h1>
+            <h1>Glass Marbles!</h1>
             <p>Move your mouse around this container to see the WebGL refraction and SVG distortion in action.</p>
         </div>
     </div>
@@ -59,22 +133,25 @@
         <defs>
             <filter id="marble-filter" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
                 <feImage id="displaceRefract" result="displaceRefract" preserveAspectRatio="none" />
-                <!-- <feImage id="displaceReflect" result="displaceReflect" preserveAspectRatio="none" /> -->
                 <feImage id="shadowMap" result="shadowMap" preserveAspectRatio="none" />
                 <feImage id="colorMap" result="colorMap" preserveAspectRatio="none" />
 
                 <feGaussianBlur in="shadowMap" result="softShadowMap" stdDeviation="8" />
 
                 <feBlend in="softShadowMap" in2="SourceGraphic" mode="multiply" result="shadowedDOM" />
-                
+                <!-- <feComposite in="softShadowMap" in2="SourceGraphic"
+                             operator="arithmetic"
+                             k1="1" k2="0" k3="0" k4="0"
+                             result="shadowedDOM" /> -->
+
                 <feGaussianBlur in="displaceRefract" result="softDisplaceRefract" stdDeviation="1" />
 
                 <feDisplacementMap in="shadowedDOM" in2="softDisplaceRefract"
-                                   scale="300" xChannelSelector="R" yChannelSelector="G"
+                                   scale="100" xChannelSelector="R" yChannelSelector="G"
                                    result="refractedDom" />
 
-                <feComposite in="colorMap" in2="refractedDom" mode="over" result="finalOutput" />
-
+                <!-- <feComposite in="colorMap" in2="refractedDom" operator="over" result="finalOutput" /> -->
+                <feBlend in="colorMap" in2="refractedDom" operator="overlay" result="finalOutput" />
             </filter>
         </defs>
     </svg>
@@ -89,7 +166,7 @@
     <script type="x-shader/x-fragment" id="frag">
         #define MARBLE_COUNT 2
         #define ITERATIONS 4
-        #define DISPLACEMENT_SCALE 300.0
+        #define DISPLACEMENT_SCALE 100.0
         precision mediump float;
         uniform vec2 u_canvas_size;
         uniform vec2 u_viewport_size;
@@ -332,8 +409,8 @@
                     x: window.innerWidth / 3,
                     y: window.innerHeight / 2,
                     z: 20, r: 60, mass: 60 ** 3,
-                    glassColor: [0.95, 0.95, 0.5],
-                    coreColor: [1.0, 0.5, 0.6],
+                    glassColor: [0.65, 0.88, 0.95],
+                    coreColor: [1.0, 1.0, 1.0],
                     vx: 0, vy: 0, vz: 0, q: [1, 0, 0, 0],
                     matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
                     isDragging: false
@@ -342,8 +419,8 @@
                     x: 2 * window.innerWidth / 3,
                     y: window.innerHeight / 2,
                     z: 20, r: 40, mass: 40 ** 3,
-                    glassColor: [0.5, 0.95, 0.95],
-                    coreColor: [0.3, 0.55, 1.0],
+                    glassColor: [0.98, 0.85, 0.55],
+                    coreColor: [1.0, 1.0, 1.0],
                     vx: 0, vy: 0, vz: 0, q: [1, 0, 0, 0],
                     matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
                     isDragging: false
@@ -362,10 +439,35 @@
         resize();
 
         // Mouse interactions
-        window.addEventListener('mousedown', (e) => {
-            const rect = container.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+
+        // Bulletproof coordinate extractor for both mouse and mobile touch inputs
+        function getEventCoords(e, containerElement) {
+            const rect = containerElement.getBoundingClientRect();
+            let clientX, clientY;
+
+            // Check if it's a touch event
+            if (e.touches !== undefined) {
+                // Use active touches first, fall back to changedTouches (crucial for touchend), then targetTouches
+                const touch = e.touches[0] || e.changedTouches[0] || e.targetTouches[0];
+                clientX = touch.clientX;
+                clientY = touch.clientY;
+            } else {
+                // Standard mouse fallback
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Unified Start Handler (mousedown & touchstart)
+        const handleStart = (e) => {
+            const container = document.getElementById('container');
+            const { x: mouseX, y: mouseY } = getEventCoords(e, container);
+
             let hitIdx = -1;
             for (let i = 0; i < state.marbles.length; i++) {
                 const m = state.marbles[i];
@@ -373,29 +475,57 @@
                     if (hitIdx === -1 || m.z > state.marbles[hitIdx].z) hitIdx = i;
                 }
             }
+
             if (hitIdx !== -1) {
-                e.preventDefault();
+                if (e.cancelable) e.preventDefault();
+
                 state.draggedIdx = hitIdx;
                 state.marbles[hitIdx].isDragging = true;
                 state.dragOffsetX = mouseX - state.marbles[hitIdx].x;
                 state.dragOffsetY = mouseY - state.marbles[hitIdx].y;
+
+                // Lock immediate tracked coordinates to the tap position to prevent an initial jump frame
+                state.mouseX = mouseX;
+                state.mouseY = mouseY;
             }
-        });
+        };
 
-        window.addEventListener('mousemove', (e) => {
-            const rect = container.getBoundingClientRect();
-            state.mouseX = e.clientX - rect.left;
-            state.mouseY = e.clientY - rect.top;
-        });
+        // Unified Move Handler (mousemove & touchmove)
+        const handleMove = (e) => {
+            // Only capture coordinates if we have active touches or it's a mouse move
+            if (e.touches && e.touches.length === 0) return;
 
+            const container = document.getElementById('container');
+            const { x: mouseX, y: mouseY } = getEventCoords(e, container);
+
+            state.mouseX = mouseX;
+            state.mouseY = mouseY;
+
+            if (state.draggedIdx !== -1 && e.cancelable) {
+                e.preventDefault();
+            }
+        };
+
+        // Unified End Drag Handler (mouseup, mouseleave, touchend, touchcancel)
         const endDrag = () => {
             if (state.draggedIdx !== -1) {
                 state.marbles[state.draggedIdx].isDragging = false;
                 state.draggedIdx = -1;
             }
         };
+
+        // Event bindings remain the same
+        window.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', endDrag);
         window.addEventListener('mouseleave', endDrag);
+
+        window.addEventListener('touchstart', handleStart, { passive: false });
+        window.addEventListener('touchmove', handleMove, { passive: false });
+        window.addEventListener('touchend', endDrag);
+        window.addEventListener('touchcancel', endDrag);
+
+
 
         // 3D Quaternion/Rotor Math
         const qMul = ([w1, x1, y1, z1], [w2, x2, y2, z2]) => {
@@ -431,9 +561,9 @@
                     m.vz -= 0.8; // Gravity
 
                     // Air/Rolling friction
-                    m.vx *= 0.985;
-                    m.vy *= 0.985;
-                    m.vz *= 0.99;
+                    m.vx *= 0.99;
+                    m.vy *= 0.99;
+                    m.vz *= 0.995;
 
                     m.x += m.vx;
                     m.y += m.vy;
@@ -523,7 +653,6 @@
                     const angle = speedXY / m.r;
                     const c = Math.cos(angle / 2);
                     const s = Math.sin(angle / 2) / speedXY;
-
                     // m.q = qMul([c, -m.vy * s, m.vx * s, 0], m.q);
                     m.q = qMul([c, -m.vy * s, -m.vx * s, 0], m.q);
                     m.matrix = qToMat(m.q);
@@ -578,8 +707,8 @@
             gl.clearColor(0, 0, 0, 0);
 
 
-            let renderWidth = Math.round(state.width);
-            let renderHeight = Math.round(state.height);
+            let renderWidth = Math.min(Math.round(state.width), 1024);
+            let renderHeight = Math.min(Math.round(state.height), 1024);
             canvas.width = renderWidth;
             canvas.height = renderHeight;
             gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
@@ -592,8 +721,8 @@
             colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
 
-            renderWidth = Math.round(state.width / 2);
-            renderHeight = Math.round(state.height / 2);
+            renderWidth = Math.min(Math.round(state.width / 2), 512);
+            renderHeight = Math.min(Math.round(state.height / 2), 512);
             canvas.width = renderWidth;
             canvas.height = renderHeight;
             gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
@@ -611,8 +740,8 @@
             // displaceReflect.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
 
-            renderWidth = Math.round(state.width / 4);
-            renderHeight = Math.round(state.height / 4);
+            renderWidth = Math.min(Math.round(state.width / 4), 512);
+            renderHeight = Math.min(Math.round(state.height / 4), 512);
             canvas.width = renderWidth;
             canvas.height = renderHeight;
             gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
