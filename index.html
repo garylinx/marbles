@@ -133,6 +133,7 @@
         <defs>
             <filter id="marble-filter" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
                 <feImage id="displaceRefract" result="displaceRefract" preserveAspectRatio="none" />
+                <feImage id="displaceReflect" result="displaceReflect" preserveAspectRatio="none" />
                 <feImage id="shadowMap" result="shadowMap" preserveAspectRatio="none" />
                 <feImage id="colorMap" result="colorMap" preserveAspectRatio="none" />
 
@@ -150,8 +151,17 @@
                                    scale="200" xChannelSelector="R" yChannelSelector="G"
                                    result="refractedDom" />
 
-                <!-- <feComposite in="colorMap" in2="refractedDom" operator="over" result="finalOutput" /> -->
-                <feBlend in="colorMap" in2="refractedDom" operator="overlay" result="finalOutput" />
+                <feDisplacementMap in="refractedDom" in2="displaceReflect"
+                                   scale="200" xChannelSelector="R" yChannelSelector="G"
+                                   result="reflectedDom" />
+
+                <feComposite in="colorMap" in2="refractedDom" operator="over" result="colored" />
+                <!-- <feBlend in="colorMap" in2="refractedDom" operator="overlay" result="colored" /> -->
+
+                <feComposite in="reflectedDom" in2="colored"
+                             operator="arithmetic"
+                             k1="0" k2="0.1" k3="1.0" k4="0"
+                             result="finalOutput" />
             </filter>
         </defs>
     </svg>
@@ -194,7 +204,7 @@
 
             if(u_mode==3){
                 rp = vec3(uv, 0);
-                rd = vec3(-1, 1, 2);
+                rd = vec3(-1, 1,1.0);
             }
 
             vec3 firstNormal = vec3(0);
@@ -250,7 +260,7 @@
                     if(firstNormal.z==0.0) firstNormal = n;
                     float cosf = dot(rd, n);
                     vec3 sinvec = rd - cosf * n;
-                    float N = 1.1;
+                    float N = 1.3;
                     if (cosf > 0.0) N = 1.0/N;
                     else inside = true;
                     float cosf2 = N*N*dot(rd, rd) - dot(sinvec, sinvec);
@@ -258,7 +268,9 @@
                         rd = sinvec + n * sqrt(cosf2) * sign(cosf);
                     } else {
                         rd = sinvec - n * cosf;
+                        inside = true;
                     }
+                    if(u_mode==1) rd = sinvec - n * cosf;
                     rd = normalize(rd);
 
                     // Inside the marble
@@ -333,22 +345,18 @@
                     }
                 }
 
-                 if(u_mode==2 || u_mode==3){
+                if(u_mode==2 || u_mode==3){
                     float highlight = dot(firstNormal, -firstRayDirection);
-                    if(u_mode==2){
-                        highlight += pow(1.0 - highlight, 5.0) * firstRayDirection.z * 5.0;
-                    }
-                    highlight = pow(highlight, 5.0) * 0.1;
-                  
+                    highlight = pow(highlight, 2.0) * 0.1;
                     color = mix(color, color + vec4(1), highlight);
                 }
 
-            }
 
+            }
             
             if(u_mode==0 || u_mode==1){
                 // pack displacement map.
-                rp -= rd / rd.z * rp.z;
+                rp -= rd / rd.z * (rp.z + 5.0);
                 color.xy = -(rp.xy - uv) / DISPLACEMENT_SCALE * vec2(-1.0, 1.0) + 0.5;
                 color.a=1.0;
             }
@@ -661,7 +669,7 @@
         }
 
         const displaceRefract = document.getElementById('displaceRefract');
-        // const displaceReflect = document.getElementById('displaceReflect');
+        const displaceReflect = document.getElementById('displaceReflect');
         const colorMap = document.getElementById('colorMap');
         const shadowMap = document.getElementById('shadowMap');
 
@@ -707,8 +715,8 @@
             gl.clearColor(0, 0, 0, 0);
 
 
-            let renderWidth = Math.min(Math.round(state.width), 1024);
-            let renderHeight = Math.min(Math.round(state.height), 1024);
+            let renderWidth = Math.min(Math.round(state.width), 2048);
+            let renderHeight = Math.min(Math.round(state.height), 2048);
             canvas.width = renderWidth;
             canvas.height = renderHeight;
             gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
@@ -718,11 +726,12 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 2);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
+            // colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
             colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
 
-            renderWidth = Math.min(Math.round(state.width / 2), 512);
-            renderHeight = Math.min(Math.round(state.height / 2), 512);
+            renderWidth = Math.min(Math.round(state.width / 2), 1024);
+            renderHeight = Math.min(Math.round(state.height / 2), 1024);
             canvas.width = renderWidth;
             canvas.height = renderHeight;
             gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
@@ -734,10 +743,11 @@
             gl.drawArrays(gl.TRIANGLES, 0, 3);
             displaceRefract.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
-            // gl.clear(gl.COLOR_BUFFER_BIT);
-            // gl.uniform1i(u_mode, 0);
-            // gl.drawArrays(gl.TRIANGLES, 0, 3);
-            // displaceReflect.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, 1);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            displaceReflect.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
+
 
 
             renderWidth = Math.min(Math.round(state.width / 4), 512);
@@ -746,6 +756,7 @@
             canvas.height = renderHeight;
             gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
             gl.viewport(0, 0, canvas.width, canvas.height);
+
 
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
