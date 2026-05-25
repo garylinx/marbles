@@ -689,6 +689,10 @@
         const coreData = new Float32Array(MARBLE_COUNT * 3);
         const matsData = new Float32Array(MARBLE_COUNT * 9);
 
+        function updateFeImageWithCanvas(feImage, canvas) {
+            feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
+        }
+
         // Render Loop
         let frameCount = 0;
         function loop(now) {
@@ -749,17 +753,13 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 2);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            // colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
-            colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
-
+            updateFeImageWithCanvas(colorMap, canvas)
 
 
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 0);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            displaceRefract.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png', 0.9));
-
-
+            updateFeImageWithCanvas(displaceRefract, canvas)
 
 
             renderWidth = Math.min(Math.round(state.width / 4), 512);
@@ -773,14 +773,14 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 1);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            displaceReflect.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/jpeg', 0.9));
+            updateFeImageWithCanvas(displaceReflect, canvas)
 
 
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 3);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            shadowMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/jpeg'));
+            updateFeImageWithCanvas(shadowMap, canvas)
 
             requestAnimationFrame(loop);
         }
