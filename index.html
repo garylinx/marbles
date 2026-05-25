@@ -232,14 +232,13 @@
 
                 <feComposite in="maskedReflection" in2="refractedDom" operator="over" result="finalOutput" />
 
-                <!-- <feComposite in="displaceRefract" in2="finalOutput" operator="over" result="debugOutput" /> -->
+
 
             </filter>
         </defs>
     </svg>
 
-    <canvas id="canvas"
-            style="pointer-events: none; position: fixed; left: 0; top: 0; width: 100vw;height: 100vh; "></canvas>
+
 
 
 
@@ -507,13 +506,20 @@
             gl.shaderSource(shader, document.getElementById(sourceId).textContent.trim());
             gl.compileShader(shader);
             if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
-            console.error(gl.getShaderInfoLog(shader));
+            console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
         }
 
         function linkProgram(shaders) {
             const program = gl.createProgram();
-            for (let shader of shaders) gl.attachShader(program, shader);
+            for (const shader of shaders) {
+                if (shader) gl.attachShader(program, shader);
+            }
             gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+            }
             return program;
         }
 
@@ -663,7 +669,6 @@
         // Unified Start Handler (mousedown & touchstart)
         const handleStart = (e) => {
             AudioFX.init();
-            const container = document.getElementById('container');
             const { x: mouseX, y: mouseY } = getEventCoords(e, container);
 
             let hitIdx = -1;
@@ -693,7 +698,6 @@
             // Only capture coordinates if we have active touches or it's a mouse move
             if (e.touches && e.touches.length === 0) return;
 
-            const container = document.getElementById('container');
             const { x: mouseX, y: mouseY } = getEventCoords(e, container);
 
             state.mouseX = mouseX;
@@ -980,7 +984,7 @@
         }
 
         // Render Loop
-        function loop(now) {
+        function loop(_t) {
             updatePhysics();
 
             // Check if marbles are moving or dragging (with settle frames)
@@ -1026,8 +1030,6 @@
                 renderAndMapPass(canvasShadow, ctxShadow, shadowMap, 3, 'image/jpeg', 0.7);
 
                 // Pass 2: Final Overlay (full resolution)
-                gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-                gl.viewport(0, 0, canvas.width, canvas.height);
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 gl.uniform1i(u_mode, 2);
                 gl.drawArrays(gl.TRIANGLES, 0, 3);
