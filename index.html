@@ -124,7 +124,7 @@
         <!-- Main Content Layer -->
         <div id="content">
             <h1>Glass Marbles!</h1>
-            <p>Move your mouse around this container to see the WebGL refraction and SVG distortion in action.</p>
+            <p>Drag the glass marbles around to see the WebGL refraction and SVG distortion in action.</p>
         </div>
     </div>
 
@@ -211,7 +211,8 @@
 
             vec3 firstNormal = vec3(0);
             vec3 firstRayDirection = normalize(rd);
-
+            
+            bool terminate = false;
 
             for(int iteration=0;iteration<ITERATIONS;iteration++){
 
@@ -327,8 +328,6 @@
                     }
 
                     if(f_min>0.0){
-                        color.rgb = mix(color.rgb, coreColor, abs(dot(rd, n)));
-                        color.a = 2.0;
                         inside = false;
                         rp = rp + rd * f_min;
                     }
@@ -337,23 +336,31 @@
                         volume = distance(lastEntry, rp)*0.05;
                     }
 
-
-                    float alpha = 0.0;
                     if(volume>0.0){
                         color.r *= pow(glassColor.r, volume);
                         color.g *= pow(glassColor.g, volume);
                         color.b *= pow(glassColor.b, volume);
                         color.a = 1.0-(1.0 - color.a)*exp(-volume*0.1);
                     }
+
+                    if(f_min>0.0){
+                        if(u_mode==3) color.rgb *= 0.7;
+                        else{
+                            float brightness = abs(dot(rd, n)) * 0.5 + 0.5;
+                            color.rgb = mix(color.rgb, coreColor, (1.0 - color.a));
+                            color.a = 1.0;
+                            terminate = true;
+                        }
+                    }
                 }
 
                 if(u_mode==2 || u_mode==3){
                     float highlight = dot(firstNormal, -firstRayDirection);
-                    highlight = pow(highlight, 2.0) * 0.1;
+                    highlight = pow(highlight, 3.0) * 0.1;
                     color = mix(color, color + vec4(1), highlight);
                 }
 
-
+                if(terminate) break;
             }
             
             if(u_mode==0 || u_mode==1){
@@ -419,8 +426,8 @@
                     x: window.innerWidth / 3,
                     y: window.innerHeight / 2,
                     z: 20, r: 60, mass: 60 ** 3,
-                    glassColor: [0.65, 0.88, 0.95],
-                    coreColor: [1.0, 1.0, 1.0],
+                    glassColor: [0.85, 0.96, 0.98], // #90e0ef (Soft Sea Blue)
+                    coreColor: [0.00, 0.47, 0.71],  // #0077b6 (Deep Indigo)
                     vx: 0, vy: 0, vz: 0, q: [1, 0, 0, 0],
                     matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
                     isDragging: false
@@ -429,8 +436,8 @@
                     x: 2 * window.innerWidth / 3,
                     y: window.innerHeight / 2,
                     z: 20, r: 40, mass: 40 ** 3,
-                    glassColor: [0.98, 0.85, 0.55],
-                    coreColor: [1.0, 1.0, 1.0],
+                    glassColor: [1.00, 0.91, 0.70], // #ffb703 (Bright Gold)
+                    coreColor: [1.00, 0.42, 0.21],  // #ff6b35 (Warm Orange)
                     vx: 0, vy: 0, vz: 0, q: [1, 0, 0, 0],
                     matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
                     isDragging: false
@@ -585,7 +592,7 @@
             const [m1, m2] = state.marbles;
             const dx = m1.x - m2.x, dy = m1.y - m2.y, dz = m1.z - m2.z;
             const dist = Math.hypot(dx, dy, dz);
-            const minDist = m1.r + m2.r  + 1;
+            const minDist = m1.r + m2.r + 1;
 
             if (dist < minDist && dist > 0.0001) {
                 const nx = dx / dist, ny = dy / dist, nz = dz / dist;
@@ -664,7 +671,7 @@
                     const c = Math.cos(angle / 2);
                     const s = Math.sin(angle / 2) / speedXY;
                     // m.q = qMul([c, -m.vy * s, m.vx * s, 0], m.q);
-                    m.q = qMul([c, -m.vy * s, -m.vx * s, 0], m.q);
+                    m.q = qMul([c, m.vy * s, m.vx * s, 0], m.q);
                     m.matrix = qToMat(m.q);
                 }
             });
@@ -724,18 +731,10 @@
 
             let renderWidth = Math.min(Math.round(state.width), 2048);
             let renderHeight = Math.min(Math.round(state.height), 2048);
-            canvas.width = renderWidth;
-            canvas.height = renderHeight;
-            gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-            gl.viewport(0, 0, canvas.width, canvas.height);
-
-
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 2);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            // colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
-            colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
-
+            // canvas.width = renderWidth;
+            // canvas.height = renderHeight;
+            // gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
+            // gl.viewport(0, 0, canvas.width, canvas.height);
 
             renderWidth = Math.min(Math.round(state.width / 2), 1024);
             renderHeight = Math.min(Math.round(state.height / 2), 1024);
@@ -745,15 +744,21 @@
             gl.viewport(0, 0, canvas.width, canvas.height);
 
 
+
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, 2);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            // colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
+            colorMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
+
+
+
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 0);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            displaceRefract.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
+            displaceRefract.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png', 0.9));
 
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 1);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            displaceReflect.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
 
 
 
@@ -765,12 +770,17 @@
             gl.viewport(0, 0, canvas.width, canvas.height);
 
 
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, 1);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            displaceReflect.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/jpeg', 0.9));
+
+
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 3);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            shadowMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/png'));
-
+            shadowMap.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL('image/jpeg'));
 
             requestAnimationFrame(loop);
         }
