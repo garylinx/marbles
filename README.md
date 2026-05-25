@@ -1,6 +1,6 @@
 # Glass Marbles
 
-![Glass Marbles Cover](./cover.jpg)
+[![Glass Marbles Cover](./cover.jpg)](https://chiuhans111.github.io/marbles/)
 
 An interactive, 3D glass marbles simulation. 
 
