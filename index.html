@@ -5,12 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebGL Refraction Glass Marbles!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 0;
-            /* Summer white / Soft cream Japanese base */
             background-color: #f7f5f0;
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
         }
 
         #container {
@@ -83,32 +86,42 @@
             margin: auto;
             padding: 48px 32px;
             text-align: center;
-            font-family: system-ui, -apple-system, sans-serif;
             color: #1a2238;
             z-index: 4;
         }
 
-        ::selection {
-            background-color: rgb(255, 136, 0);
-            color: black;
-            /* Text color */
-        }
+
 
         #content h1 {
-            font-size: 3rem;
-            font-weight: 700;
+            font-size: 4rem;
+            font-weight: 800;
             margin: 0 0 16px 0;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
             color: #1a2238;
         }
 
+        ::selection {
+            background-color: rgb(32, 32, 32);
+            color: rgb(219, 219, 219);
+        }
+
+        h1::selection {
+            background-color: rgb(255, 136, 0);
+            color: black;
+        }
+
         #content p {
-            font-size: 1rem;
-            line-height: 1.7;
-            /* Soft charcoal */
+            font-size: 1.1rem;
+            line-height: 1.6;
             color: #5c677d;
             margin: 0;
             font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        a {
+            color: black;
+            text-decoration: none;
         }
     </style>
 </head>
@@ -116,7 +129,7 @@
 <body>
     <div id="container">
         <!-- Background color layer captured by the SVG filter SourceGraphic -->
-        <div style="position: absolute; inset: 0; background-color: #f7f5f0; z-index: 1;"></div>
+        <div style="position: absolute; inset: 0; background-color: #e4e4e4; z-index: 1; pointer-events: none;"></div>
         <!-- Interactive Background Elements -->
         <div class="bg-glow bg-glow-1"></div>
         <div class="bg-glow bg-glow-2"></div>
@@ -126,7 +139,8 @@
         <!-- Main Content Layer -->
         <div id="content">
             <h1>Glass Marbles!</h1>
-            <p>Drag the glass marbles around to see the WebGL refraction and SVG distortion in action.</p>
+            <p>Drag the glass marbles around!</p>
+            <p>A demo by <a href="https://x.com/chiu_hans" target="_blank">Hans Chiu</a></p>
         </div>
     </div>
 
@@ -156,7 +170,7 @@
                                values="0 0 0 0 0
                                        0 0 0 0 0
                                        0 0 0 0 0
-                                       0 0 1.5 0 0"
+                                       0 0 2 0 0"
                                result="fresnelMask" />
 
                 <feComposite in="reflectedDomBlur" in2="fresnelMask" operator="in" result="maskedReflection" />
@@ -280,7 +294,7 @@
                             specBack += pow(max(dot(reflect(rd, n), LIGHT_DIR), 0.0), 16.0) * 0.12;
                         }
                         // Ray trace multiple internal bubbles (lightweight loop)
-                        for(int b_id = 0; b_id < 10; b_id++) {
+                        for(int b_id = 0; b_id < 3; b_id++) {
                             float seed = float(b_id) + 1.0;
                             vec3 bubble_local = vec3(sin(seed * 3.7), cos(seed * 5.9), sin(seed * 8.3)) * 0.35;
                             float r_world = 0.02 * R;
@@ -468,35 +482,50 @@
         const state = {
             marbles: [
                 {
-                    x: window.innerWidth / 3,
-                    y: window.innerHeight / 2,
-                    z: 20, r: 60, mass: 60 ** 3,
+                    x: window.innerWidth / 2 - 50,
+                    y: window.innerHeight / 2 + 200,
+                    z: 150, r: 60, mass: 60 ** 3,
                     glassColor: [0.85, 0.96, 0.98], // #90e0ef (Soft Sea Blue)
                     coreColor: [0.00, 0.47, 0.71],  // #0077b6 (Deep Indigo)
-                    vx: 0, vy: 0, vz: 0, q: [1, 0, 0, 0],
+                    vx: 0.1, vy: -5.0, vz: 0, q: [1, 0, 0, 0],
                     matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
                     isDragging: false
                 },
                 {
-                    x: 2 * window.innerWidth / 3,
-                    y: window.innerHeight / 2,
-                    z: 20, r: 40, mass: 40 ** 3,
+                    x: window.innerWidth / 2 + 50,
+                    y: window.innerHeight / 2 + 100,
+                    z: 220, r: 40, mass: 40 ** 3,
                     glassColor: [1.00, 0.91, 0.70], // #ffb703 (Bright Gold)
                     coreColor: [1.00, 0.42, 0.21],  // #ff6b35 (Warm Orange)
-                    vx: 0, vy: 0, vz: 0, q: [1, 0, 0, 0],
+                    vx: 0.2, vy: -3.0, vz: 0, q: [1, 0, 0, 0],
                     matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
                     isDragging: false
                 }
             ],
             mouseX: 0, mouseY: 0, draggedIdx: -1, dragOffsetX: 0, dragOffsetY: 0,
-            settleFrames: 10, width: 512, height: 512
+            settleFrames: 10, width: window.innerWidth, height: window.innerHeight
         };
 
         // Resize Tracking.
         function resize() {
-            state.width = window.innerWidth;
-            state.height = window.innerHeight;
+            const oldWidth = state.width;
+            const oldHeight = state.height;
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+
+            state.width = newWidth;
+            state.height = newHeight;
             state.settleFrames = 2; // Trigger re-render on resize
+
+            // Rescale marble coordinates proportionally to the screen size change
+            if (oldWidth > 0 && oldHeight > 0) {
+                const scaleX = newWidth / oldWidth;
+                const scaleY = newHeight / oldHeight;
+                state.marbles.forEach(m => {
+                    m.x = Math.max(m.r, Math.min(newWidth - m.r, m.x * scaleX));
+                    m.y = Math.max(m.r, Math.min(newHeight - m.r, m.y * scaleY));
+                });
+            }
 
             // Keep main canvas size set to full resolution (clamped to 2048)
             canvas.width = Math.min(Math.round(state.width), 2048);
@@ -721,10 +750,10 @@
 
                     // Wall Collisions
                     if (m.x < m.r) { m.x = m.r; m.vx *= -0.8; }
-                    else if (m.x > window.innerWidth - m.r) { m.x = window.innerWidth - m.r; m.vx *= -0.8; }
+                    else if (m.x > state.width - m.r) { m.x = state.width - m.r; m.vx *= -0.8; }
 
                     if (m.y < m.r) { m.y = m.r; m.vy *= -0.8; }
-                    else if (m.y > window.innerHeight - m.r) { m.y = window.innerHeight - m.r; m.vy *= -0.8; }
+                    else if (m.y > state.height - m.r) { m.y = state.height - m.r; m.vy *= -0.8; }
                 }
 
                 // 4. Visual Rolling (Quaternion Update)
@@ -787,7 +816,7 @@
 
             if (isMoving) {
                 state.marbles.forEach((m, i) => {
-                    posData[i * 3] = m.x; posData[i * 3 + 1] = window.innerHeight - m.y; posData[i * 3 + 2] = m.z;
+                    posData[i * 3] = m.x; posData[i * 3 + 1] = state.height - m.y; posData[i * 3 + 2] = m.z;
                     radiiData[i] = m.r;
                     glassData[i * 3] = m.glassColor[0]; glassData[i * 3 + 1] = m.glassColor[1]; glassData[i * 3 + 2] = m.glassColor[2];
                     coreData[i * 3] = m.coreColor[0]; coreData[i * 3 + 1] = m.coreColor[1]; coreData[i * 3 + 2] = m.coreColor[2];
