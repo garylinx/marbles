@@ -604,6 +604,7 @@
 
         // Unified Start Handler (mousedown & touchstart)
         const handleStart = (e) => {
+            AudioFX.init();
             const container = document.getElementById('container');
             const { x: mouseX, y: mouseY } = getEventCoords(e, container);
 
@@ -681,6 +682,77 @@
             2 * x * z + 2 * w * y, 2 * y * z - 2 * w * x, 1 - 2 * x * x - 2 * y * y
         ];
 
+        // Procedural Audio Engine
+        const AudioFX = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            play(speed, radius) {
+                this.init();
+                if (this.ctx.state === 'suspended') return;
+
+                const now = this.ctx.currentTime;
+                // Deeper base frequency (warm glass/marble range: 800Hz - 1200Hz)
+                const baseFreq = 800 + (60 - radius) * 20;
+
+                const masterGain = this.ctx.createGain();
+                masterGain.connect(this.ctx.destination);
+
+                const maxVol = Math.min(speed * 0.05, 0.25);
+                masterGain.gain.setValueAtTime(0, now);
+                masterGain.gain.linearRampToValueAtTime(maxVol, now + 0.001); // Instant strike
+                masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045); // Extremely short decay (45ms max)
+
+                // 1. Warmer, Less Tonal Impact Transient (Triangle sweep from 5kHz to 80Hz in 4ms)
+                const clickOsc = this.ctx.createOscillator();
+                const clickGain = this.ctx.createGain();
+                clickOsc.type = 'triangle';
+                clickOsc.frequency.setValueAtTime(5000, now);
+                clickOsc.frequency.exponentialRampToValueAtTime(80, now + 0.004);
+                
+                clickGain.gain.setValueAtTime(0.7, now); // Prominent physical impact tick
+                clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.004);
+                
+                clickOsc.connect(clickGain);
+                clickGain.connect(masterGain);
+                
+                clickOsc.start(now);
+                clickOsc.stop(now + 0.008);
+
+                // 2. High-Frequency Glass Body Resonance Partials (super-tight micro decays)
+                const partials = [
+                    { ratio: 1.00, gain: 0.25, decay: 0.02 }, // Extremely fast dampening
+                    { ratio: 1.60, gain: 0.18, decay: 0.01 },
+                    { ratio: 2.20, gain: 0.14, decay: 0.007 },
+                    { ratio: 3.10, gain: 0.10, decay: 0.005 },
+                    { ratio: 4.40, gain: 0.06, decay: 0.003 }
+                ];
+
+                partials.forEach(p => {
+                    const osc = this.ctx.createOscillator();
+                    const partialGain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(baseFreq * p.ratio, now);
+
+                    osc.connect(partialGain);
+                    partialGain.connect(masterGain);
+
+                    partialGain.gain.setValueAtTime(p.gain, now);
+                    partialGain.gain.exponentialRampToValueAtTime(0.001, now + p.decay);
+
+                    osc.start(now);
+                    osc.stop(now + 0.035);
+                });
+            }
+        };
+
         // Bouncing, elastic collision, and rolling physics simulation
         function updatePhysics() {
             // 1. Integration (Gravity, Movement, and Dragging)
@@ -744,6 +816,9 @@
 
                     // CRITICAL FIX: Only resolve if they are actively moving towards each other
                     if (velAlongNormal < 0) {
+                        if (velAlongNormal < -0.2) {
+                            AudioFX.play(Math.abs(velAlongNormal), Math.min(m1.r, m2.r));
+                        }
                         const restitution = 0.8; // Bounciness
                         const j = -(1 + restitution) * velAlongNormal / (1 / m1.mass + 1 / m2.mass);
 
@@ -773,6 +848,7 @@
                         m.z = m.r;
                         // CRITICAL FIX: Threshold to stop micro-bounces
                         if (m.vz < -2.0) {
+                            AudioFX.play(Math.abs(m.vz) * 0.7, m.r);
                             m.vz *= -0.55;
                         } else {
                             m.vz = 0; // True rest state
@@ -782,11 +858,27 @@
                     }
 
                     // Wall Collisions
-                    if (m.x < m.r) { m.x = m.r; m.vx *= -0.8; }
-                    else if (m.x > state.width - m.r) { m.x = state.width - m.r; m.vx *= -0.8; }
+                    if (m.x < m.r) {
+                        if (Math.abs(m.vx) > 0.5) AudioFX.play(Math.abs(m.vx) * 0.7, m.r);
+                        m.x = m.r;
+                        m.vx *= -0.8;
+                    }
+                    else if (m.x > state.width - m.r) {
+                        if (Math.abs(m.vx) > 0.5) AudioFX.play(Math.abs(m.vx) * 0.7, m.r);
+                        m.x = state.width - m.r;
+                        m.vx *= -0.8;
+                    }
 
-                    if (m.y < m.r) { m.y = m.r; m.vy *= -0.8; }
-                    else if (m.y > state.height - m.r) { m.y = state.height - m.r; m.vy *= -0.8; }
+                    if (m.y < m.r) {
+                        if (Math.abs(m.vy) > 0.5) AudioFX.play(Math.abs(m.vy) * 0.7, m.r);
+                        m.y = m.r;
+                        m.vy *= -0.8;
+                    }
+                    else if (m.y > state.height - m.r) {
+                        if (Math.abs(m.vy) > 0.5) AudioFX.play(Math.abs(m.vy) * 0.7, m.r);
+                        m.y = state.height - m.r;
+                        m.vy *= -0.8;
+                    }
                 }
 
                 // 4. Visual Rolling (Quaternion Update)
