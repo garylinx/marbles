@@ -166,7 +166,8 @@
         </defs>
     </svg>
 
-    <canvas id="canvas" style="pointer-events: none; position: fixed; left: 0; top: 0; "></canvas>
+    <canvas id="canvas"
+            style="pointer-events: none; position: fixed; left: 0; top: 0; width: 100vw;height: 100vh; "></canvas>
 
 
 
@@ -208,11 +209,11 @@
 
             if(u_mode==3){
                 rp = vec3(uv, 0);
-                rd = vec3(-1, 1,1.0);
+                rd = normalize(vec3(-1.0, 1.0, 1.0));
             }
 
             vec3 firstNormal = vec3(0);
-            vec3 firstRayDirection = normalize(rd);
+            vec3 firstRayDirection = rd;
             
             bool terminate = false;
 
@@ -233,16 +234,13 @@
                     vec3 o = u_marble_positions[marble_id];
                     float radius_val = u_marble_radii[marble_id];
                     vec3 d = rp - o;
-                    float a = dot(rd, rd);
-                    float a_inv_2 = 1.0/2.0/a;
-                    float b = 2.0 * dot(d, rd);
+                    float b = dot(d, rd);
                     float c = dot(d, d) - radius_val*radius_val;
-                    float D = b*b - 4.0*a*c;
+                    float D = b*b - c;
                     if (D>0.0){
-                        float f_center = -b * a_inv_2;
-                        float f_diff = sqrt(D) * a_inv_2;
-                        float f1 = f_center - f_diff;
-                        float f2 = f_center + f_diff;
+                        float sqrtD = sqrt(D);
+                        float f1 = -b - sqrtD;
+                        float f2 = -b + sqrtD;
                         float f = (f1 > 0.01) ? f1 : f2;
                         if (f > 0.01 && (f < f_min || f_min < 0.0)) {
                             f_min = f;
@@ -268,7 +266,7 @@
                     float N = 1.3;
                     if (cosf > 0.0) N = 1.0/N;
                     else inside = true;
-                    float cosf2 = N*N*dot(rd, rd) - dot(sinvec, sinvec);
+                    float cosf2 = N*N - dot(sinvec, sinvec);
                     if (cosf2 > 0.0){
                         rd = sinvec + n * sqrt(cosf2) * sign(cosf);
                     } else {
@@ -385,6 +383,14 @@
         const canvas = document.getElementById('canvas');
         const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: true });
 
+        // Helper 2D canvases to avoid WebGL canvas resizing thrashing and optimize toDataURL
+        const canvasRefract = document.createElement('canvas');
+        const ctxRefract = canvasRefract.getContext('2d');
+        const canvasReflect = document.createElement('canvas');
+        const ctxReflect = canvasReflect.getContext('2d');
+        const canvasShadow = document.createElement('canvas');
+        const ctxShadow = canvasShadow.getContext('2d');
+
         function createShader(type, sourceId) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, document.getElementById(sourceId).textContent.trim());
@@ -456,6 +462,21 @@
         function resize() {
             state.width = window.innerWidth;
             state.height = window.innerHeight;
+            state.settleFrames = 2; // Trigger re-render on resize
+
+            // Keep main canvas size set to full resolution (clamped to 2048)
+            canvas.width = Math.min(Math.round(state.width), 2048);
+            canvas.height = Math.min(Math.round(state.height), 2048);
+
+            // Set helper canvas sizes once on resize
+            canvasRefract.width = Math.min(Math.round(state.width / 2), 1024);
+            canvasRefract.height = Math.min(Math.round(state.height / 2), 1024);
+
+            canvasReflect.width = Math.min(Math.round(state.width / 4), 512);
+            canvasReflect.height = Math.min(Math.round(state.height / 4), 512);
+
+            canvasShadow.width = Math.min(Math.round(state.width / 4), 512);
+            canvasShadow.height = Math.min(Math.round(state.height / 4), 512);
         }
         window.addEventListener('resize', resize);
         resize();
@@ -555,7 +576,7 @@
             const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
             const y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
             const z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
-            const l = Math.hypot(w, x, y, z);
+            const l = Math.sqrt(w * w + x * x + y * y + z * z);
             return [w / l, x / l, y / l, z / l];
         };
         const qToMat = ([w, x, y, z]) => [
@@ -596,51 +617,54 @@
             // 2. Marble-Marble Collision Resolution
             const [m1, m2] = state.marbles;
             const dx = m1.x - m2.x, dy = m1.y - m2.y, dz = m1.z - m2.z;
-            const dist = Math.hypot(dx, dy, dz);
+            const distSq = dx * dx + dy * dy + dz * dz;
             const minDist = m1.r + m2.r + 1;
 
-            if (dist < minDist && dist > 0.0001) {
-                const nx = dx / dist, ny = dy / dist, nz = dz / dist;
-                const overlap = minDist - dist;
+            if (distSq < minDist * minDist) {
+                const dist = Math.sqrt(distSq);
+                if (dist > 0.0001) {
+                    const nx = dx / dist, ny = dy / dist, nz = dz / dist;
+                    const overlap = minDist - dist;
 
-                // Positional Correction: Push apart weighted by mass
-                const totalMass = m1.mass + m2.mass;
-                const m1Ratio = m2.mass / totalMass; // Heavier marble moves less
-                const m2Ratio = m1.mass / totalMass;
+                    // Positional Correction: Push apart weighted by mass
+                    const totalMass = m1.mass + m2.mass;
+                    const m1Ratio = m2.mass / totalMass; // Heavier marble moves less
+                    const m2Ratio = m1.mass / totalMass;
 
-                if (!m1.isDragging && !m2.isDragging) {
-                    m1.x += nx * overlap * m1Ratio; m1.y += ny * overlap * m1Ratio; m1.z += nz * overlap * m1Ratio;
-                    m2.x -= nx * overlap * m2Ratio; m2.y -= ny * overlap * m2Ratio; m2.z -= nz * overlap * m2Ratio;
-                } else if (!m1.isDragging) {
-                    m1.x += nx * overlap; m1.y += ny * overlap; m1.z += nz * overlap;
-                } else if (!m2.isDragging) {
-                    m2.x -= nx * overlap; m2.y -= ny * overlap; m2.z -= nz * overlap;
-                }
-
-                // Velocity Impulse: Standard 3D Elastic Collision
-                const relVx = m1.vx - m2.vx;
-                const relVy = m1.vy - m2.vy;
-                const relVz = m1.vz - m2.vz;
-                const velAlongNormal = relVx * nx + relVy * ny + relVz * nz;
-
-                // CRITICAL FIX: Only resolve if they are actively moving towards each other
-                if (velAlongNormal < 0) {
-                    const restitution = 0.8; // Bounciness
-                    const j = -(1 + restitution) * velAlongNormal / (1 / m1.mass + 1 / m2.mass);
-
-                    const impulseX = j * nx;
-                    const impulseY = j * ny;
-                    const impulseZ = j * nz;
-
-                    if (!m1.isDragging) {
-                        m1.vx += impulseX / m1.mass;
-                        m1.vy += impulseY / m1.mass;
-                        m1.vz += impulseZ / m1.mass;
+                    if (!m1.isDragging && !m2.isDragging) {
+                        m1.x += nx * overlap * m1Ratio; m1.y += ny * overlap * m1Ratio; m1.z += nz * overlap * m1Ratio;
+                        m2.x -= nx * overlap * m2Ratio; m2.y -= ny * overlap * m2Ratio; m2.z -= nz * overlap * m2Ratio;
+                    } else if (!m1.isDragging) {
+                        m1.x += nx * overlap; m1.y += ny * overlap; m1.z += nz * overlap;
+                    } else if (!m2.isDragging) {
+                        m2.x -= nx * overlap; m2.y -= ny * overlap; m2.z -= nz * overlap;
                     }
-                    if (!m2.isDragging) {
-                        m2.vx -= impulseX / m2.mass;
-                        m2.vy -= impulseY / m2.mass;
-                        m2.vz -= impulseZ / m2.mass;
+
+                    // Velocity Impulse: Standard 3D Elastic Collision
+                    const relVx = m1.vx - m2.vx;
+                    const relVy = m1.vy - m2.vy;
+                    const relVz = m1.vz - m2.vz;
+                    const velAlongNormal = relVx * nx + relVy * ny + relVz * nz;
+
+                    // CRITICAL FIX: Only resolve if they are actively moving towards each other
+                    if (velAlongNormal < 0) {
+                        const restitution = 0.8; // Bounciness
+                        const j = -(1 + restitution) * velAlongNormal / (1 / m1.mass + 1 / m2.mass);
+
+                        const impulseX = j * nx;
+                        const impulseY = j * ny;
+                        const impulseZ = j * nz;
+
+                        if (!m1.isDragging) {
+                            m1.vx += impulseX / m1.mass;
+                            m1.vy += impulseY / m1.mass;
+                            m1.vz += impulseZ / m1.mass;
+                        }
+                        if (!m2.isDragging) {
+                            m2.vx -= impulseX / m2.mass;
+                            m2.vy -= impulseY / m2.mass;
+                            m2.vz -= impulseZ / m2.mass;
+                        }
                     }
                 }
             }
@@ -670,8 +694,9 @@
                 }
 
                 // 4. Visual Rolling (Quaternion Update)
-                const speedXY = Math.hypot(m.vx, m.vy);
-                if (speedXY > 0.01) {
+                const speedXYSq = m.vx * m.vx + m.vy * m.vy;
+                if (speedXYSq > 0.0001) {
+                    const speedXY = Math.sqrt(speedXYSq);
                     const angle = speedXY / m.r;
                     const c = Math.cos(angle / 2);
                     const s = Math.sin(angle / 2) / speedXY;
@@ -699,32 +724,25 @@
             feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataurl);
         }
 
+        function renderAndMapPass(destCanvas, destCtx, feImage, mode, quality) {
+            gl.uniform2f(u_viewport_size, destCanvas.width, destCanvas.height);
+            gl.viewport(0, 0, destCanvas.width, destCanvas.height);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, mode);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            destCtx.drawImage(canvas, 0, canvas.height - destCanvas.height, destCanvas.width, destCanvas.height, 0, 0, destCanvas.width, destCanvas.height);
+            updateFeImageWithCanvas(feImage, destCanvas, 'image/jpeg', quality);
+        }
+
         // Render Loop
         let frameCount = 0;
         function loop(now) {
             updatePhysics();
 
-
-            state.marbles.forEach((m, i) => {
-                posData[i * 3] = m.x; posData[i * 3 + 1] = window.innerHeight - m.y; posData[i * 3 + 2] = m.z;
-                radiiData[i] = m.r;
-                glassData[i * 3] = m.glassColor[0]; glassData[i * 3 + 1] = m.glassColor[1]; glassData[i * 3 + 2] = m.glassColor[2];
-                coreData[i * 3] = m.coreColor[0]; coreData[i * 3 + 1] = m.coreColor[1]; coreData[i * 3 + 2] = m.coreColor[2];
-                matsData.set(m.matrix, i * 9);
-            });
-
-            gl.uniform2f(u_canvas_size, state.width, state.height);
-            gl.uniform3fv(u_marble_positions, posData);
-            gl.uniform1fv(u_marble_radii, radiiData);
-            gl.uniform3fv(u_glass_colors, glassData);
-            gl.uniform3fv(u_core_colors, coreData);
-            gl.uniformMatrix3fv(u_marble_matrices, false, matsData);
-
-
             // Check if marbles are moving or dragging (with settle frames)
             let isMoving = false;
             state.marbles.forEach(m => {
-                if (m.isDragging || Math.hypot(m.vx, m.vy) > 0.02 || Math.abs(m.vz) > 0.02) {
+                if (m.isDragging || (m.vx * m.vx + m.vy * m.vy) > 0.0004 || Math.abs(m.vz) > 0.02) {
                     isMoving = true;
                 }
             });
@@ -736,71 +754,41 @@
                 isMoving = true;
             }
 
-            gl.clearColor(0, 0, 0, 0);
-            let renderWidth = Math.min(Math.round(state.width), 2048);
-            let renderHeight = Math.min(Math.round(state.height), 2048);
+            if (isMoving) {
+                state.marbles.forEach((m, i) => {
+                    posData[i * 3] = m.x; posData[i * 3 + 1] = window.innerHeight - m.y; posData[i * 3 + 2] = m.z;
+                    radiiData[i] = m.r;
+                    glassData[i * 3] = m.glassColor[0]; glassData[i * 3 + 1] = m.glassColor[1]; glassData[i * 3 + 2] = m.glassColor[2];
+                    coreData[i * 3] = m.coreColor[0]; coreData[i * 3 + 1] = m.coreColor[1]; coreData[i * 3 + 2] = m.coreColor[2];
+                    matsData.set(m.matrix, i * 9);
+                });
 
+                gl.uniform2f(u_canvas_size, state.width, state.height);
+                gl.uniform3fv(u_marble_positions, posData);
+                gl.uniform1fv(u_marble_radii, radiiData);
+                gl.uniform3fv(u_glass_colors, glassData);
+                gl.uniform3fv(u_core_colors, coreData);
+                gl.uniformMatrix3fv(u_marble_matrices, false, matsData);
 
-            renderWidth = Math.min(Math.round(state.width / 2), 1024);
-            renderHeight = Math.min(Math.round(state.height / 2), 1024);
-            canvas.width = renderWidth;
-            canvas.height = renderHeight;
-            gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-            gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clearColor(0, 0, 0, 0);
 
+                // Pass 0: Refraction displacement (half resolution)
+                renderAndMapPass(canvasRefract, ctxRefract, displaceRefract, 0, 1.0);
 
+                // Pass 1: Reflection displacement (quarter resolution)
+                renderAndMapPass(canvasReflect, ctxReflect, displaceReflect, 1, 0.75);
 
+                // Pass 3: Shadow Map (quarter resolution)
+                renderAndMapPass(canvasShadow, ctxShadow, shadowMap, 3, 0.75);
 
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 0);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(displaceRefract, canvas, 'image/jpeg', 1.0)
-
-
-            renderWidth = Math.min(Math.round(state.width / 4), 512);
-            renderHeight = Math.min(Math.round(state.height / 4), 512);
-            canvas.width = renderWidth;
-            canvas.height = renderHeight;
-            gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-            gl.viewport(0, 0, canvas.width, canvas.height);
-
-
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 1);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(displaceReflect, canvas, 'image/jpeg', 0.75)
-
-
-            // renderWidth = Math.min(Math.round(state.width / 8), 512);
-            // renderHeight = Math.min(Math.round(state.height / 8), 512);
-            // canvas.width = renderWidth;
-            // canvas.height = renderHeight;
-            // gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-            // gl.viewport(0, 0, canvas.width, canvas.height);
-
-
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 3);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(shadowMap, canvas, 'image/jpeg', 0.75)
-
-
-            renderWidth = Math.min(Math.round(state.width), 2048);
-            renderHeight = Math.min(Math.round(state.height), 2048);
-            canvas.width = renderWidth;
-            canvas.height = renderHeight;
-            gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-            gl.viewport(0, 0, canvas.width, canvas.height);
-
-
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 2);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            // updateFeImageWithCanvas(colorMap, canvas, 'image/png', 1.0)
-
-
-
+                // Pass 2: Final Overlay (full resolution)
+                gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.uniform1i(u_mode, 2);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+                // updateFeImageWithCanvas(colorMap, canvas, 'image/png', 1.0)
+            }
 
             requestAnimationFrame(loop);
         }
