@@ -606,11 +606,11 @@
             canvas.height = Math.min(Math.round(state.height), 2048);
 
             // Set helper canvas sizes in logical CSS coordinates to scale down textures
-            canvasRefract.width = Math.min(Math.round(state.width / 2 / dpr), 1024);
-            canvasRefract.height = Math.min(Math.round(state.height / 2 / dpr), 1024);
+            canvasRefract.width = Math.min(Math.round(state.width / 2), 1024);
+            canvasRefract.height = Math.min(Math.round(state.height / 2), 1024);
 
-            canvasReflect.width = Math.min(Math.round(state.width / 4 / dpr), 512);
-            canvasReflect.height = Math.min(Math.round(state.height / 4 / dpr), 512);
+            canvasReflect.width = Math.min(Math.round(state.width / 4), 512);
+            canvasReflect.height = Math.min(Math.round(state.height / 4), 512);
 
             canvasShadow.width = Math.min(Math.round(state.width / 4 / dpr), 512);
             canvasShadow.height = Math.min(Math.round(state.height / 4 / dpr), 512);
@@ -630,12 +630,6 @@
                     img.setAttribute('width', newWidth);
                     img.setAttribute('height', newHeight);
                 }
-            });
-
-            // Normalize the Displacement Map Scale
-            const displacementScale = 200 * (newWidth / 1920);
-            document.querySelectorAll('feDisplacementMap').forEach(el => {
-                el.setAttribute('scale', displacementScale);
             });
         }
         window.addEventListener('resize', resize);
