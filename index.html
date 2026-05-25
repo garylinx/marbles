@@ -9,7 +9,6 @@
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden;
             /* Summer white / Soft cream Japanese base */
             background-color: #f7f5f0;
         }
@@ -19,8 +18,8 @@
             width: 100vw;
             height: 100vh;
             display: flex;
-            overflow: hidden;
             filter: url(#marble-filter);
+            overflow: hidden;
         }
 
         /* Soft Summer Ambient Glows */
@@ -156,17 +155,20 @@
 
                 <feGaussianBlur in="reflectedDom" result="reflectedDomBlur" stdDeviation="2" />
 
-
-                <feComposite in="colorMap" in2="refractedDom" operator="over" result="colored" />
+                <!-- <feComposite in="colorMap" in2="refractedDom" operator="over" result="colored" /> -->
                 <!-- <feBlend in="colorMap" in2="refractedDom" operator="overlay" result="colored" /> -->
 
-                <feComposite in="reflectedDomBlur" in2="colored"
+                <feComposite in="reflectedDomBlur" in2="refractedDom"
                              operator="arithmetic"
                              k1="0" k2="0.1" k3="0.9" k4="0"
                              result="finalOutput" />
             </filter>
         </defs>
     </svg>
+
+    <canvas id="canvas" style="pointer-events: none; position: fixed; left: 0; top: 0; "></canvas>
+
+
 
     <script type="x-shader/x-vertex" id="vert">
         attribute vec2 a_position;
@@ -370,14 +372,17 @@
                 color.a=1.0;
             }
 
-           
+            if(u_mode==2){
+                color.rgb *= color.a;
+            }
+
             gl_FragColor = color;
         }
     </script>
 
     <script>
         const container = document.getElementById('container');
-        const canvas = document.createElement('canvas');
+        const canvas = document.getElementById('canvas');
         const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: true });
 
         function createShader(type, sourceId) {
@@ -690,7 +695,8 @@
         const matsData = new Float32Array(MARBLE_COUNT * 9);
 
         function updateFeImageWithCanvas(feImage, canvas, type, quality) {
-            feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', canvas.toDataURL(type, quality));
+            const dataurl = canvas.toDataURL(type, quality);
+            feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataurl);
         }
 
         // Render Loop
@@ -731,14 +737,9 @@
             }
 
             gl.clearColor(0, 0, 0, 0);
-
-
             let renderWidth = Math.min(Math.round(state.width), 2048);
             let renderHeight = Math.min(Math.round(state.height), 2048);
-            // canvas.width = renderWidth;
-            // canvas.height = renderHeight;
-            // gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
-            // gl.viewport(0, 0, canvas.width, canvas.height);
+
 
             renderWidth = Math.min(Math.round(state.width / 2), 1024);
             renderHeight = Math.min(Math.round(state.height / 2), 1024);
@@ -751,15 +752,9 @@
 
 
             gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform1i(u_mode, 2);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(colorMap, canvas, 'image/png', 1.0)
-
-
-            gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 0);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(displaceRefract, canvas, 'image/jpg', 1.0)
+            updateFeImageWithCanvas(displaceRefract, canvas, 'image/jpeg', 1.0)
 
 
             renderWidth = Math.min(Math.round(state.width / 4), 512);
@@ -773,14 +768,37 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 1);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(displaceReflect, canvas, 'image/jpg', 0.5)
+            updateFeImageWithCanvas(displaceReflect, canvas, 'image/jpeg', 0.75)
+
+
+            // renderWidth = Math.min(Math.round(state.width / 8), 512);
+            // renderHeight = Math.min(Math.round(state.height / 8), 512);
+            // canvas.width = renderWidth;
+            // canvas.height = renderHeight;
+            // gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
+            // gl.viewport(0, 0, canvas.width, canvas.height);
 
 
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.uniform1i(u_mode, 3);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
-            updateFeImageWithCanvas(shadowMap, canvas, 'image/jpg', 0.5)
+            updateFeImageWithCanvas(shadowMap, canvas, 'image/jpeg', 0.75)
+
+
+            renderWidth = Math.min(Math.round(state.width), 2048);
+            renderHeight = Math.min(Math.round(state.height), 2048);
+            canvas.width = renderWidth;
+            canvas.height = renderHeight;
+            gl.uniform2f(u_viewport_size, canvas.width, canvas.height);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform1i(u_mode, 2);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            // updateFeImageWithCanvas(colorMap, canvas, 'image/png', 1.0)
+
 
 
 
