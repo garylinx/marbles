@@ -1006,14 +1006,14 @@
         const coreData = new Float32Array(MARBLE_COUNT * 3);
         const matsData = new Float32Array(MARBLE_COUNT * 9);
 
-        function updateFeImageWithCanvas(feImage, canvas, type, quality) {
-            const dataurl = canvas.toDataURL(type, quality);
+        function updateFeImageWithCanvas(feImage, canvas) {
+            const dataurl = canvas.toDataURL('image/png', 1.0);
             feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataurl);
         }
 
-        function renderAndMapPass(renderer, feImage, mode, type, quality) {
+        function renderAndMapPass(renderer, feImage, mode) {
             renderer.draw(mode, state.width, state.height, posData, radiiData, glassData, coreData, matsData);
-            updateFeImageWithCanvas(feImage, renderer.canvas, type, quality);
+            updateFeImageWithCanvas(feImage, renderer.canvas);
         }
 
         // Render Loop
@@ -1045,13 +1045,13 @@
                 });
 
                 // Pass 0: Refraction displacement (half resolution)
-                renderAndMapPass(refractRenderer, displaceRefract, 0, 'image/png', 1.0);
+                renderAndMapPass(refractRenderer, displaceRefract, 0);
 
                 // Pass 1: Reflection displacement (quarter resolution)
-                renderAndMapPass(reflectRenderer, displaceReflect, 1, 'image/png', 1.0);
+                renderAndMapPass(reflectRenderer, displaceReflect, 1);
 
                 // Pass 3: Shadow Map (quarter resolution)
-                renderAndMapPass(shadowRenderer, shadowMap, 3, 'image/jpeg', 0.7);
+                renderAndMapPass(shadowRenderer, shadowMap, 3);
 
                 // Pass 2: Final Overlay (full resolution)
                 mainRenderer.draw(2, state.width, state.height, posData, radiiData, glassData, coreData, matsData);
