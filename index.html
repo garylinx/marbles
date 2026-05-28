@@ -45,6 +45,10 @@
 
         * {
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
@@ -57,6 +61,8 @@
             color: var(--ink);
             font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
             touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
             user-select: none;
         }
 
@@ -66,6 +72,9 @@
             height: 100vh;
             overflow: hidden;
             background: #F7E8D6;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #container {
@@ -1232,6 +1241,7 @@
             longPressTimer: null,
             pressStart: null,
             dragSample: null,
+            lastTap: null,
             infoIdx: -1
         };
 
@@ -1247,12 +1257,15 @@
 
         function targetGeometry() {
             const minDim = Math.min(state.width, state.height);
-            const ring = clamp(minDim * 0.34, 110, Math.min(state.width / 2 - 76, state.height / 2 - 92, 330));
+            const isCompact = state.width <= 720 || state.height <= 720;
+            const ringFactor = isCompact ? 0.29 : 0.34;
+            const ring = clamp(minDim * ringFactor, 96, Math.min(state.width / 2 - 58, state.height / 2 - 108, 330));
+            const safeRing = Math.max(86, ring);
             return {
                 cx: state.width / 2,
-                cy: state.height / 2,
-                ring: Math.max(96, ring),
-                imageSize: Math.round(Math.max(96, ring) * 2.56)
+                cy: isCompact ? state.height * 0.47 : state.height / 2,
+                ring: safeRing,
+                imageSize: Math.round(safeRing * (isCompact ? 2.28 : 2.56))
             };
         }
 
@@ -1271,10 +1284,15 @@
         }
 
         function startPosition(index) {
-            const layout = [
+            const mobileLayout = [
+                [0.20, 0.19], [0.50, 0.17], [0.80, 0.19], [0.18, 0.78],
+                [0.82, 0.78], [0.30, 0.89], [0.50, 0.91], [0.70, 0.89]
+            ];
+            const desktopLayout = [
                 [0.16, 0.76], [0.29, 0.86], [0.42, 0.78], [0.55, 0.88],
                 [0.70, 0.78], [0.20, 0.16], [0.76, 0.14], [0.88, 0.24]
             ];
+            const layout = state.width <= 720 ? mobileLayout : desktopLayout;
             const [nx, ny] = layout[index] || [0.5, 0.5];
             return {
                 x: clamp(state.width * nx, 44, state.width - 44),
@@ -1357,7 +1375,8 @@
 
         function syncTargetState() {
             const g = targetGeometry();
-            const slotSize = clamp(baseRadius() * 2.34, 78, 104);
+            const isCompact = state.width <= 720 || state.height <= 720;
+            const slotSize = isCompact ? clamp(baseRadius() * 1.72, 52, 72) : clamp(baseRadius() * 2.34, 78, 104);
             const baguaImageSize = g.imageSize;
             targetLayer.style.setProperty('--slot-size', `${Math.round(slotSize)}px`);
             baguaRing.style.width = `${Math.round(g.ring * 2)}px`;
@@ -1670,6 +1689,28 @@
             state.settleFrames = 36;
         }
 
+        function registerTap(candidate) {
+            if (!candidate || candidate.index === -1) return;
+            const now = performance.now();
+            const previous = state.lastTap;
+            const isDoubleTap = previous &&
+                previous.index === candidate.index &&
+                now - previous.time < 360 &&
+                Math.hypot(previous.x - candidate.x, previous.y - candidate.y) < 34;
+
+            state.lastTap = {
+                index: candidate.index,
+                x: candidate.x,
+                y: candidate.y,
+                time: now
+            };
+
+            if (isDoubleTap) {
+                clearLongPressTimer();
+                showInfoPanel(candidate.index);
+            }
+        }
+
         const handleStart = (e) => {
             if (e.button !== undefined && e.button !== 0) return;
             AudioFX.init();
@@ -1728,6 +1769,9 @@
 
         const endDrag = () => {
             clearLongPressTimer();
+            const tapCandidate = state.pressStart && Math.hypot(state.mouseX - state.pressStart.x, state.mouseY - state.pressStart.y) <= 10
+                ? { ...state.pressStart }
+                : null;
             state.pressStart = null;
             state.dragSample = null;
 
@@ -1740,6 +1784,8 @@
                 state.draggedIdx = -1;
                 syncTargetState();
             }
+
+            registerTap(tapCandidate);
         };
 
         const handleDoubleClick = (e) => {
@@ -1783,9 +1829,12 @@
             window.addEventListener('touchcancel', endDrag);
         }
         window.addEventListener('dblclick', handleDoubleClick);
-        window.addEventListener('contextmenu', (e) => {
-            const { x, y } = getEventCoords(e, container);
-            if (findMarbleAt(x, y) !== -1) e.preventDefault();
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+        window.addEventListener('selectstart', (e) => e.preventDefault());
+        window.addEventListener('dragstart', (e) => e.preventDefault());
+        document.addEventListener('selectionchange', () => {
+            const selection = window.getSelection && window.getSelection();
+            if (selection && selection.rangeCount) selection.removeAllRanges();
         });
 
         const qMul = ([w1, x1, y1, z1], [w2, x2, y2, z2]) => {
