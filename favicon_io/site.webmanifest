@@ -1,6 +1,6 @@
 {
-  "name": "Glass Marbles!",
-  "short_name": "Marbles",
+  "name": "八顆珠",
+  "short_name": "八顆珠",
   "icons": [
     {
       "src": "android-chrome-192x192.png",
@@ -13,8 +13,8 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#F7E8D6",
+  "background_color": "#F7E8D6",
   "display": "standalone",
   "start_url": "../index.html",
   "scope": "../"

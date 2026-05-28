@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="透明心珠">
+  <defs>
+    <radialGradient id="body" cx="35%" cy="27%" r="70%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="0.32" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="0.66" stop-color="#eef4ee" stop-opacity="0.48"/>
+      <stop offset="1" stop-color="#bcc9c1" stop-opacity="0.64"/>
+    </radialGradient>
+    <radialGradient id="shine" cx="34%" cy="24%" r="31%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="52%" cy="56%" r="54%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="128" cy="128" r="96" fill="url(#body)" opacity="0.76"/>
+  <circle cx="128" cy="128" r="94" fill="none" stroke="#ffffff" stroke-opacity="0.74" stroke-width="3"/>
+  <circle cx="128" cy="128" r="89" fill="none" stroke="#d9e2db" stroke-opacity="0.38" stroke-width="2"/>
+  <circle cx="128" cy="128" r="92" fill="url(#core)"/>
+  <ellipse cx="94" cy="82" rx="34" ry="23" fill="url(#shine)"/>
+</svg>

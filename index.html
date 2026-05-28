@@ -1,57 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 
 <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CQJG8DJ0YW"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-
-        gtag('config', 'G-CQJG8DJ0YW');
-    </script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marbles!</title>
+    <title>八顆珠</title>
     <meta name="description"
-          content="Interactive 3D WebGL refraction glass marbles simulation with physical collisions and real-time SVG distortion mapping.">
+          content="八顆珠互動陣法：拖曳珠子入先天八卦宮位，啟動光氣與文字解說。">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://chiuhans111.github.io/marbles/">
-    <meta property="og:title" content="Marbles!">
+    <meta property="og:title" content="八顆珠">
     <meta property="og:description"
-          content="Interactive 3D WebGL refraction glass marbles simulation with physical collisions and real-time SVG distortion mapping.">
-    <meta property="og:image" content="https://chiuhans111.github.io/marbles/cover.jpg">
+          content="八顆珠互動陣法：拖曳珠子入先天八卦宮位，啟動光氣與文字解說。">
+    <meta property="og:image" content="./cover.jpg">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://chiuhans111.github.io/marbles/">
-    <meta property="twitter:title" content="Marbles!">
+    <meta property="twitter:title" content="八顆珠">
     <meta property="twitter:description"
-          content="Interactive 3D WebGL refraction glass marbles simulation with physical collisions and real-time SVG distortion mapping.">
-    <meta property="twitter:image" content="https://chiuhans111.github.io/marbles/cover.jpg">
+          content="八顆珠互動陣法：拖曳珠子入先天八卦宮位，啟動光氣與文字解說。">
+    <meta property="twitter:image" content="./cover.jpg">
 
     <!-- Favicon / Manifest Links -->
-    <link rel="apple-touch-icon" sizes="180x180"
-          href="https://chiuhans111.github.io/marbles/favicon_io/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32"
-          href="https://chiuhans111.github.io/marbles/favicon_io/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16"
-          href="https://chiuhans111.github.io/marbles/favicon_io/favicon-16x16.png">
-    <link rel="manifest" href="https://chiuhans111.github.io/marbles/favicon_io/site.webmanifest">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="./favicon_io/site.webmanifest">
     <style>
+        :root {
+            color-scheme: light;
+            --ink: #063346;
+            --ink-soft: rgba(6, 51, 70, 0.72);
+            --ink-faint: rgba(6, 51, 70, 0.16);
+            --jade: #2D9B73;
+            --gold: #C8912E;
+            --paper: #F7E8D6;
+            --paper-warm: #EACDAA;
+            --paper-light: #FFF4E6;
+            --rose: #D95D8C;
+            --slot-size: 86px;
+            --bagua-image-size: 620px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            background-color: #f7f5f0;
-            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--paper);
+            color: var(--ink);
+            font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
+            touch-action: none;
+            user-select: none;
         }
 
         #app-wrapper {
@@ -59,6 +65,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
+            background: #F7E8D6;
         }
 
         #container {
@@ -68,105 +75,589 @@
             height: 100%;
             display: flex;
             filter: url(#marble-filter);
-            background-color: #f7f5f0;
             overflow: hidden;
         }
 
-        /* Soft Summer Ambient Glows */
-        .bg-glow {
+        .field-surface {
             position: absolute;
-            border-radius: 50%;
-            opacity: 0.5;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at center, rgba(255, 244, 230, 0.42) 0 20%, rgba(247, 232, 214, 0.10) 21% 44%, transparent 58%),
+                linear-gradient(135deg, rgba(6, 51, 70, 0.035), transparent 46%, rgba(200, 145, 46, 0.08));
+        }
+
+        #center-bagua-wrap {
+            position: absolute;
+            left: 50%;
+            top: 50%;
             z-index: 2;
+            width: var(--bagua-image-size);
+            height: var(--bagua-image-size);
+            border: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow: none;
         }
 
-        .bg-glow-1 {
-            top: -10%;
-            left: 15%;
-            width: 55vw;
-            height: 55vw;
-            /* Clear skies blue */
-            background: radial-gradient(circle, #a2d2ff 0%, transparent 70%);
+        #center-bagua {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            opacity: 0.48;
+            mix-blend-mode: normal;
         }
 
-        .bg-glow-2 {
-            bottom: -10%;
-            right: 15%;
-            width: 55vw;
-            height: 55vw;
-            /* Soft sunset orange */
-            background: radial-gradient(circle, #ffb703 0%, transparent 70%);
-        }
-
-        /* High-Contrast Floating Shapes (Refraction Bending) */
-        .bg-shape {
+        #bagua-ring {
             position: absolute;
-            opacity: 0.9;
+            left: 50%;
+            top: 50%;
             z-index: 3;
+            width: 560px;
+            height: 560px;
+            border: 1px solid rgba(6, 51, 70, 0.30);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow:
+                inset 0 0 0 1px rgba(255, 255, 255, 0.58),
+                inset 0 0 42px rgba(6, 51, 70, 0.045),
+                0 0 42px rgba(200, 145, 46, 0.13);
+            display: none;
         }
 
-        .bg-shape-1 {
-            top: 22%;
-            left: 20%;
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, #ff6b35, #ffb703);
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        #bagua-ring::before,
+        #bagua-ring::after {
+            content: "";
+            position: absolute;
+            inset: 8%;
+            border-radius: 50%;
+            pointer-events: none;
         }
 
-        .bg-shape-2 {
-            bottom: 25%;
-            right: 22%;
-            width: 130px;
-            height: 130px;
-            /* Deep Indigo/Sea Blue */
-            background: linear-gradient(135deg, #0077b6, #90e0ef);
-            border-radius: 32px;
-            transform: rotate(15deg);
+        #bagua-ring::before {
+            border: 1px solid rgba(200, 145, 46, 0.34);
+            background:
+                linear-gradient(90deg, transparent calc(50% - 1px), rgba(6, 51, 70, 0.18) 50%, transparent calc(50% + 1px)),
+                linear-gradient(0deg, transparent calc(50% - 1px), rgba(6, 51, 70, 0.18) 50%, transparent calc(50% + 1px));
         }
 
-        /* Minimalist Typography Layer */
+        #bagua-ring::after {
+            inset: 18%;
+            border: 1px dashed rgba(200, 145, 46, 0.30);
+            transform: rotate(45deg);
+        }
+
+        #target-layer,
+        #activation-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #activation-layer {
+            z-index: 16;
+        }
+
+        .target-slot {
+            position: absolute;
+            width: var(--slot-size);
+            height: var(--slot-size);
+            border: 1px solid rgba(6, 51, 70, 0.24);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: #063346;
+            background: transparent;
+            box-shadow:
+                inset 0 1px 4px rgba(6, 51, 70, 0.12),
+                0 1px 5px rgba(6, 51, 70, 0.09);
+            transform: translate(-50%, -50%);
+            opacity: 0.74;
+            transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 180ms ease;
+        }
+
+        .target-slot::before {
+            content: "";
+            position: absolute;
+            inset: 7px;
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            border-radius: 50%;
+            box-shadow: inset 0 0 8px rgba(6, 51, 70, 0.06);
+            opacity: 1;
+            pointer-events: none;
+        }
+
+        .target-slot::after {
+            content: "";
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px rgba(200, 145, 46, 0.10);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .target-glyph {
+            position: relative;
+            display: grid;
+            width: 100%;
+            height: 100%;
+            gap: 0;
+            justify-items: center;
+            line-height: 1;
+        }
+
+        .target-palace {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .target-name {
+            position: absolute;
+            left: 50%;
+            top: calc(100% + 4px);
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-soft);
+            white-space: nowrap;
+            transform: translateX(-50%);
+            display: none;
+        }
+
+        .target-slot.active {
+            border-color: color-mix(in srgb, var(--accent), rgba(6, 51, 70, 0.18) 44%);
+            box-shadow:
+                inset 0 1px 4px rgba(6, 51, 70, 0.09),
+                0 0 18px color-mix(in srgb, var(--accent), transparent 76%);
+            opacity: 0.9;
+        }
+
+        .target-slot.near {
+            border-color: color-mix(in srgb, var(--accent), rgba(6, 51, 70, 0.12) 30%);
+            box-shadow:
+                inset 0 1px 4px rgba(6, 51, 70, 0.09),
+                0 0 0 5px color-mix(in srgb, var(--accent), transparent 88%),
+                0 0 16px color-mix(in srgb, var(--accent), transparent 80%);
+            opacity: 1;
+        }
+
+        #bead-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 13;
+            pointer-events: none;
+        }
+
+        #flow-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 12;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 760ms ease;
+        }
+
+        #flow-layer.complete {
+            opacity: 1;
+        }
+
+        #flow-layer svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            overflow: visible;
+        }
+
+        .flow-base {
+            fill: none;
+            stroke: rgba(216, 160, 40, 0.22);
+            stroke-width: 3.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: url(#flow-glow);
+        }
+
+        .flow-aura {
+            fill: none;
+            stroke: rgba(255, 213, 111, 0.34);
+            stroke-width: 34;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: url(#flow-haze);
+            opacity: 0.68;
+            animation: flowBreathe 3.1s ease-in-out infinite;
+        }
+
+        .flow-haze {
+            fill: none;
+            stroke: url(#flow-haze-gradient);
+            stroke-width: 19;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 92 30;
+            filter: url(#flow-haze);
+            opacity: 0.70;
+            animation: flowDash 5.2s linear infinite reverse, flowBreathe 3.8s ease-in-out infinite;
+        }
+
+        .flow-stream {
+            fill: none;
+            stroke: url(#flow-gradient);
+            stroke-width: 5.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 34 28;
+            filter: url(#flow-glow);
+            animation: flowDash 2.8s linear infinite, flowPulse 1.9s ease-in-out infinite;
+        }
+
+        .flow-stream.secondary {
+            stroke-width: 3.4;
+            stroke-dasharray: 10 38;
+            animation-duration: 1.55s, 2.1s;
+            opacity: 0.78;
+        }
+
+        .flow-spark {
+            fill: #FFF4BF;
+            filter: url(#flow-glow);
+            opacity: 0.92;
+        }
+
+        .bead {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            will-change: left, top, transform, filter;
+        }
+
+        .bead::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 58%;
+            width: 62%;
+            height: 22%;
+            border-radius: 50%;
+            background: rgba(6, 51, 70, 0.10);
+            filter: blur(8px);
+            opacity: 0.30;
+            transform: translate(-50%, 44%);
+        }
+
+        .bead::after {
+            content: "";
+            position: absolute;
+            inset: -34%;
+            border-radius: 50%;
+            background: radial-gradient(circle, color-mix(in srgb, var(--accent), white 14%) 0 14%, color-mix(in srgb, var(--accent), transparent 70%) 24%, transparent 60%);
+            opacity: 0;
+            transform: scale(0.78);
+            pointer-events: none;
+        }
+
+        .bead img {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: auto;
+            filter:
+                drop-shadow(0 4px 6px rgba(6, 51, 70, 0.08))
+                drop-shadow(0 0 10px color-mix(in srgb, var(--accent), transparent 80%));
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .bead.dragging img {
+            filter:
+                drop-shadow(0 8px 12px rgba(6, 51, 70, 0.10))
+                drop-shadow(0 0 14px color-mix(in srgb, var(--accent), transparent 70%));
+        }
+
+        .bead.activated img {
+            animation: beadPlacedPulse 1.18s ease-in-out infinite;
+        }
+
+        .bead.activated::after {
+            animation: beadFlashPulse 1.18s ease-in-out infinite;
+        }
+
         #content {
-            max-width: 640px;
-            margin: auto;
-            padding: 48px 32px;
-            text-align: center;
-            color: #1a2238;
+            position: absolute;
+            left: 50%;
+            top: 50%;
             z-index: 4;
+            width: min(420px, calc(100vw - 48px));
+            padding: 0 16px;
+            text-align: center;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
         }
-
-
 
         #content h1 {
-            font-size: 4rem;
+            margin: 0;
+            color: var(--ink);
+            font-size: 42px;
             font-weight: 800;
-            margin: 0 0 16px 0;
-            letter-spacing: -0.03em;
-            color: #1a2238;
+            letter-spacing: 0;
+            text-shadow: 0 1px 0 rgba(247, 232, 214, 0.72);
+        }
+
+        #status-text {
+            display: none;
+            min-height: 24px;
+            margin: 14px auto 0;
+            color: #063346;
+            font-size: 15px;
+            line-height: 1.6;
+            letter-spacing: 0;
+        }
+
+        #canvas {
+            pointer-events: none;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: none;
+        }
+
+        #info-panel {
+            position: absolute;
+            z-index: 22;
+            width: 292px;
+            max-width: calc(100vw - 32px);
+            padding: 15px 16px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(247, 232, 214, 0.18));
+            box-shadow:
+                0 12px 28px rgba(6, 51, 70, 0.13),
+                inset 0 1px 0 rgba(255, 255, 255, 0.52);
+            backdrop-filter: blur(18px) saturate(1.18);
+            -webkit-backdrop-filter: blur(18px) saturate(1.18);
+            pointer-events: none;
+        }
+
+        #info-panel[hidden] {
+            display: none;
+        }
+
+        #info-palace {
+            color: #063346;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 7px;
+        }
+
+        #info-palace:empty {
+            display: none;
+        }
+
+        #info-title {
+            color: #063346;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        #info-body {
+            color: #063346;
+            font-size: 14px;
+            line-height: 1.65;
+            margin: 0;
+        }
+
+        .activation-burst {
+            position: absolute;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0.42);
+            opacity: 0;
+            background:
+                radial-gradient(circle, color-mix(in srgb, var(--accent), white 22%) 0 8%, color-mix(in srgb, var(--accent), transparent 62%) 9% 28%, transparent 62%);
+            animation: burstExpand 1200ms ease-out forwards;
+        }
+
+        .activation-burst::before,
+        .activation-burst::after {
+            content: "";
+            position: absolute;
+            inset: 22%;
+            border: 1px solid color-mix(in srgb, var(--accent), white 18%);
+            border-radius: 50%;
+            animation: ripple 1200ms ease-out forwards;
+        }
+
+        .activation-burst::after {
+            inset: 34%;
+            animation-delay: 90ms;
+        }
+
+        .activation-burst.pink-burst {
+            width: 240px;
+            height: 240px;
+            filter: saturate(1.22);
+        }
+
+        .spark {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 56px;
+            border-radius: 999px;
+            background: linear-gradient(to top, transparent, var(--accent), transparent);
+            transform-origin: 50% 0;
+            opacity: 0;
+            animation: sparkFlash 840ms ease-out forwards;
+        }
+
+        @keyframes burstExpand {
+            0% {
+                opacity: 0.88;
+                transform: translate(-50%, -50%) scale(0.42);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.25);
+            }
+        }
+
+        @keyframes ripple {
+            0% {
+                opacity: 0.86;
+                transform: scale(0.54);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.58);
+            }
+        }
+
+        @keyframes sparkFlash {
+            0% {
+                opacity: 0;
+                transform: rotate(var(--angle)) translateY(-12px) scaleY(0.22);
+            }
+
+            30% {
+                opacity: 0.88;
+            }
+
+            100% {
+                opacity: 0;
+                transform: rotate(var(--angle)) translateY(-92px) scaleY(1);
+            }
+        }
+
+        @keyframes flowDash {
+            to {
+                stroke-dashoffset: -124;
+            }
+        }
+
+        @keyframes flowPulse {
+            0%, 100% {
+                opacity: 0.56;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes flowBreathe {
+            0%, 100% {
+                opacity: 0.42;
+            }
+
+            50% {
+                opacity: 0.88;
+            }
+        }
+
+        @keyframes beadPlacedPulse {
+            0%, 100% {
+                transform: scale(1);
+                filter:
+                    drop-shadow(0 4px 6px rgba(6, 51, 70, 0.08))
+                    drop-shadow(0 0 10px color-mix(in srgb, var(--accent), transparent 76%));
+            }
+
+            48% {
+                transform: scale(1.075);
+                filter:
+                    drop-shadow(0 5px 8px rgba(6, 51, 70, 0.08))
+                    drop-shadow(0 0 24px color-mix(in srgb, var(--accent), transparent 36%));
+            }
+        }
+
+        @keyframes beadFlashPulse {
+            0%, 100% {
+                opacity: 0.12;
+                transform: scale(0.72);
+            }
+
+            48% {
+                opacity: 0.72;
+                transform: scale(1.08);
+            }
         }
 
         ::selection {
-            background-color: rgb(32, 32, 32);
-            color: rgb(219, 219, 219);
+            background-color: #263c34;
+            color: white;
         }
 
-        h1::selection {
-            background-color: rgb(255, 136, 0);
-            color: black;
-        }
+        @media (max-width: 720px) {
+            :root {
+                --slot-size: 68px;
+            }
 
-        #content p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #5c677d;
-            margin: 0;
-            font-weight: 400;
-            letter-spacing: -0.01em;
-        }
+            #content h1 {
+                font-size: 30px;
+            }
 
-        a {
-            color: black;
-            text-decoration: none;
+            #status-text {
+                font-size: 13px;
+                max-width: 260px;
+            }
+
+            .target-palace {
+                font-size: 0;
+            }
+
+            .target-name {
+                font-size: 10px;
+            }
+
+            #info-panel {
+                width: 260px;
+                padding: 13px 14px 14px;
+            }
         }
     </style>
 </head>
@@ -174,26 +665,88 @@
 <body>
     <div id="app-wrapper">
         <div id="container">
-            <!-- Background color layer captured by the SVG filter SourceGraphic -->
-            <div style="position: absolute; inset: 0; background-color: #e4e4e4; z-index: 1; pointer-events: none;">
+            <div class="field-surface"></div>
+            <div id="center-bagua-wrap" aria-hidden="true">
+                <img id="center-bagua" src="./assets/local-bagua-transparent.png" alt="">
             </div>
-            <!-- Interactive Background Elements -->
-            <div class="bg-glow bg-glow-1"></div>
-            <div class="bg-glow bg-glow-2"></div>
-            <div class="bg-shape bg-shape-1"></div>
-            <div class="bg-shape bg-shape-2"></div>
-
-            <!-- Main Content Layer -->
+            <div id="bagua-ring" aria-hidden="true"></div>
+            <div id="target-layer" aria-hidden="true"></div>
             <div id="content">
-                <h1>Glass Marbles!</h1>
-                <p>Drag the glass marbles around!</p>
-                <p>A  <a href="https://github.com/chiuhans111/marbles" target="_blank">demo</a> by <a href="https://x.com/chiu_hans" target="_blank">Hans Chiu</a></p>
+                <h1>八顆珠</h1>
+                <p id="status-text" aria-live="polite"></p>
             </div>
         </div>
 
-        <canvas id="canvas"
-                style="pointer-events: none; position: absolute;
-                 left: 0; top: 0; width: 100%; height: 100%; z-index: 10;"></canvas>
+        <canvas id="canvas"></canvas>
+        <div id="flow-layer" aria-hidden="true">
+            <svg>
+                <defs>
+                    <filter id="flow-glow" x="-45%" y="-45%" width="190%" height="190%">
+                        <feGaussianBlur stdDeviation="6.2" result="blur" />
+                        <feColorMatrix in="blur" type="matrix"
+                                       values="1 0 0 0 0.98  0 1 0 0 0.66  0 0 1 0 0.16  0 0 0 0.94 0"
+                                       result="warmGlow" />
+                        <feMerge>
+                            <feMergeNode in="warmGlow" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                    <filter id="flow-haze" x="-70%" y="-70%" width="240%" height="240%">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="11" result="softFlow" />
+                        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.045" numOctaves="2" seed="12"
+                                      result="flowNoise" />
+                        <feDisplacementMap in="softFlow" in2="flowNoise" scale="15" xChannelSelector="R"
+                                           yChannelSelector="G" result="wanderingFlow" />
+                        <feColorMatrix in="wanderingFlow" type="matrix"
+                                       values="1 0 0 0 1.00  0 1 0 0 0.70  0 0 1 0 0.18  0 0 0 0.78 0"
+                                       result="warmFlow" />
+                        <feMerge>
+                            <feMergeNode in="warmFlow" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                    <linearGradient id="flow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#fff9d2" stop-opacity="0.34" />
+                        <stop offset="36%" stop-color="#ffe58d" stop-opacity="1" />
+                        <stop offset="62%" stop-color="#ffffff" stop-opacity="0.95" />
+                        <stop offset="100%" stop-color="#d9a236" stop-opacity="0.50" />
+                    </linearGradient>
+                    <linearGradient id="flow-haze-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#fff1a6" stop-opacity="0.10" />
+                        <stop offset="42%" stop-color="#ffd66b" stop-opacity="0.44" />
+                        <stop offset="70%" stop-color="#fffdf0" stop-opacity="0.34" />
+                        <stop offset="100%" stop-color="#e0a331" stop-opacity="0.18" />
+                    </linearGradient>
+                </defs>
+                <path id="flow-path-aura" class="flow-aura"></path>
+                <path id="flow-path-haze" class="flow-haze"></path>
+                <path id="flow-path" class="flow-base"></path>
+                <path id="flow-path-stream" class="flow-stream"></path>
+                <path id="flow-path-stream-secondary" class="flow-stream secondary"></path>
+                <circle class="flow-spark" r="4.4">
+                    <animateMotion dur="5.6s" repeatCount="indefinite">
+                        <mpath href="#flow-path" />
+                    </animateMotion>
+                </circle>
+                <circle class="flow-spark" r="3.2">
+                    <animateMotion dur="5.6s" begin="-1.9s" repeatCount="indefinite">
+                        <mpath href="#flow-path" />
+                    </animateMotion>
+                </circle>
+                <circle class="flow-spark" r="3.8">
+                    <animateMotion dur="5.6s" begin="-3.7s" repeatCount="indefinite">
+                        <mpath href="#flow-path" />
+                    </animateMotion>
+                </circle>
+            </svg>
+        </div>
+        <div id="bead-layer" aria-hidden="true"></div>
+        <div id="activation-layer" aria-hidden="true"></div>
+        <section id="info-panel" hidden aria-live="polite">
+            <div id="info-palace"></div>
+            <div id="info-title"></div>
+            <p id="info-body"></p>
+        </section>
     </div>
 
     <!-- SVG Filter Definition -->
@@ -206,7 +759,7 @@
                 <feImage id="displaceReflect" result="displaceReflect" x="0" y="0" preserveAspectRatio="none" />
                 <feImage id="shadowMap" result="shadowMap" x="0" y="0" preserveAspectRatio="none" />
 
-                <feGaussianBlur in="shadowMap" result="softShadowMap" stdDeviation="8" />
+                <feGaussianBlur in="shadowMap" result="softShadowMap" stdDeviation="2.4" />
 
                 <feBlend in="softShadowMap" in2="SourceGraphic" mode="multiply" result="shadowedDOM" />
 
@@ -255,7 +808,7 @@
             precision mediump float;
         #endif
         
-        #define MARBLE_COUNT 2
+        #define MARBLE_COUNT 8
         #define ITERATIONS 4
         #define DISPLACEMENT_SCALE 200.0
         uniform vec2 u_canvas_size;
@@ -272,7 +825,7 @@
         // 2: color and specular overlay
         // 3: shadow map pass
 
-        #define LIGHT_DIR vec3(-0.57735027, 0.57735027, 0.57735027)
+        #define LIGHT_DIR vec3(-0.20628425, 0.20628425, 0.95652294)
 
         void main() {
             vec4 color = vec4(1.0);
@@ -444,7 +997,7 @@
                     }
 
                     if(f_min>0.0){
-                        if(u_mode==3) color.rgb *= 0.7;
+                        if(u_mode==3) color.rgb *= 0.91;
                         else{
                             float brightness = abs(dot(rd, n)) * 0.5 + 0.5;
                             color.rgb = mix(color.rgb, coreColor * brightness, (1.0 - color.a));
@@ -490,8 +1043,92 @@
     <script>
         const container = document.getElementById('container');
         const canvas = document.getElementById('canvas');
+        const appWrapper = document.getElementById('app-wrapper');
+        const targetLayer = document.getElementById('target-layer');
+        const beadLayer = document.getElementById('bead-layer');
+        const flowLayer = document.getElementById('flow-layer');
+        const flowPathAura = document.getElementById('flow-path-aura');
+        const flowPathHaze = document.getElementById('flow-path-haze');
+        const flowPath = document.getElementById('flow-path');
+        const flowPathStream = document.getElementById('flow-path-stream');
+        const flowPathStreamSecondary = document.getElementById('flow-path-stream-secondary');
+        const activationLayer = document.getElementById('activation-layer');
+        const baguaRing = document.getElementById('bagua-ring');
+        const centerBaguaWrap = document.getElementById('center-bagua-wrap');
+        const statusText = document.getElementById('status-text');
+        const infoPanel = document.getElementById('info-panel');
+        const infoPalace = document.getElementById('info-palace');
+        const infoTitle = document.getElementById('info-title');
+        const infoBody = document.getElementById('info-body');
 
-        // Helper WebGL canvases to draw directly without copying
+        const SQRT_HALF = Math.SQRT1_2;
+        const HEART_BEADS = [
+            {
+                id: 'dui', palace: '兌', name: '粉紅心珠', shortName: '粉紅', direction: '左上', order: 1,
+                dx: -SQRT_HALF, dy: -SQRT_HALF, ux: 0.201, uy: 0.223, accent: '#D95D8C',
+                asset: './assets/beads/dui-pink.svg',
+                glassColor: [1.00, 0.70, 0.86], coreColor: [0.85, 0.18, 0.45],
+                panelTitle: '兌宮 粉紅色',
+                text: '只要心裡開心，世界也會變得開心，用法喜的心來面對所有的人事物。'
+            },
+            {
+                id: 'li', palace: '離', name: '透明心珠', shortName: '透明', direction: '左方', order: 2,
+                dx: -1, dy: 0, ux: 0.086, uy: 0.506, accent: '#DDE8E0',
+                asset: './assets/beads/li-clear.svg',
+                glassColor: [0.96, 0.99, 0.95], coreColor: [0.80, 0.86, 0.80],
+                panelTitle: '離宮 透明色',
+                text: '建構光明的心性，用正面的思維來開啟智慧對應心境。'
+            },
+            {
+                id: 'zhen', palace: '震', name: '綠色心珠', shortName: '綠', direction: '左下', order: 3,
+                dx: -SQRT_HALF, dy: SQRT_HALF, ux: 0.192, uy: 0.792, accent: '#2D9B73',
+                asset: './assets/beads/zhen-green.svg',
+                glassColor: [0.68, 1.00, 0.78], coreColor: [0.08, 0.50, 0.30],
+                panelTitle: '震宮 綠色',
+                text: '代表希望之光，產生無限的動力、生機蓬勃。'
+            },
+            {
+                id: 'xun', palace: '巽', name: '白色心珠', shortName: '白', direction: '右上', order: 4,
+                dx: SQRT_HALF, dy: -SQRT_HALF, ux: 0.781, uy: 0.223, accent: '#FFF8EA',
+                asset: './assets/beads/xun-white.svg',
+                glassColor: [1.00, 0.99, 0.91], coreColor: [0.80, 0.78, 0.68],
+                panelTitle: '巽宮 白色',
+                text: '聽對的話、做對的事，就能走在正確的路上。'
+            },
+            {
+                id: 'kan', palace: '坎', name: '藍色心珠', shortName: '藍', direction: '右方', order: 5,
+                dx: 1, dy: 0, ux: 0.902, uy: 0.506, accent: '#2875B8',
+                asset: './assets/beads/kan-blue.svg',
+                glassColor: [0.62, 0.84, 1.00], coreColor: [0.05, 0.28, 0.72],
+                panelTitle: '坎宮 藍色',
+                text: '代表智慧，當智慧產生，在面對所有事情才能夠非常的沉穩，藍色光珠如深海般寧靜，運用智慧與知識，在波動中依然穩定沉著。'
+            },
+            {
+                id: 'gen', palace: '艮', name: '玄色心珠', shortName: '咖啡', direction: '右下', order: 6,
+                dx: SQRT_HALF, dy: SQRT_HALF, ux: 0.785, uy: 0.790, accent: '#21120C',
+                asset: './assets/beads/gen-coffee.svg',
+                glassColor: [0.24, 0.14, 0.10], coreColor: [0.06, 0.04, 0.03],
+                panelTitle: '艮宮 玄色',
+                text: '玄色之光沉穩如山，面對批評與挑戰，不再以心承受，而是用背承載知其存在，卻不讓其傷及本心。'
+            },
+            {
+                id: 'kun', palace: '坤', name: '大地土黃心珠', shortName: '土黃', direction: '下方', order: 7,
+                dx: 0, dy: 1, ux: 0.490, uy: 0.908, accent: '#B88424',
+                asset: './assets/beads/kun-earth.svg',
+                glassColor: [0.78, 0.54, 0.20], coreColor: [0.50, 0.30, 0.08],
+                panelTitle: '坤宮 黃色',
+                text: '代表大格局，具備無私、包容、容忍與不爭，學會包容別人、不吵架、不計較。'
+            },
+            {
+                id: 'qian', palace: '乾', name: '金色心珠', shortName: '金', direction: '上方', order: 8,
+                dx: 0, dy: -1, ux: 0.497, uy: 0.106, accent: '#F4C84A',
+                asset: './assets/beads/qian-gold.svg',
+                glassColor: [1.00, 0.86, 0.36], coreColor: [0.98, 0.64, 0.04],
+                panelTitle: '乾宮 金色',
+                text: '金光流轉不息，如天地運行。領悟真正的修行是持續不斷地運行。'
+            }
+        ];
+
         const canvasRefract = document.createElement('canvas');
         const canvasReflect = document.createElement('canvas');
         const canvasShadow = document.createElement('canvas');
@@ -532,7 +1169,6 @@
             const program = linkProgram([vertShader, fragShader]);
             gl.useProgram(program);
 
-            // Fullscreen Quad Geometry
             const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
             const buffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -541,7 +1177,6 @@
             gl.enableVertexAttribArray(a_position);
             gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
 
-            // Declare uniform Locations
             const uniforms = {
                 u_canvas_size: gl.getUniformLocation(program, 'u_canvas_size'),
                 u_viewport_size: gl.getUniformLocation(program, 'u_viewport_size'),
@@ -560,11 +1195,9 @@
                 uniforms,
                 draw(mode, stateWidth, stateHeight, posData, radiiData, glassData, coreData, matsData) {
                     gl.useProgram(program);
-
                     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
                     gl.enableVertexAttribArray(a_position);
                     gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
-
                     gl.uniform2f(uniforms.u_canvas_size, stateWidth, stateHeight);
                     gl.uniform2f(uniforms.u_viewport_size, targetCanvas.width, targetCanvas.height);
                     gl.uniform3fv(uniforms.u_marble_positions, posData);
@@ -573,7 +1206,6 @@
                     gl.uniform3fv(uniforms.u_core_colors, coreData);
                     gl.uniformMatrix3fv(uniforms.u_marble_matrices, false, matsData);
                     gl.uniform1i(uniforms.u_mode, mode);
-
                     gl.viewport(0, 0, targetCanvas.width, targetCanvas.height);
                     gl.clear(gl.COLOR_BUFFER_BIT);
                     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -581,120 +1213,304 @@
             };
         }
 
-        const refractRenderer = createWebGLRenderer(canvasRefract);
-        const reflectRenderer = createWebGLRenderer(canvasReflect);
-        const shadowRenderer = createWebGLRenderer(canvasShadow);
-        const mainRenderer = createWebGLRenderer(canvas);
+        const USE_WEBGL_MARBLES = false;
+        const refractRenderer = USE_WEBGL_MARBLES ? createWebGLRenderer(canvasRefract) : null;
+        const reflectRenderer = USE_WEBGL_MARBLES ? createWebGLRenderer(canvasReflect) : null;
+        const shadowRenderer = USE_WEBGL_MARBLES ? createWebGLRenderer(canvasShadow) : null;
+        const mainRenderer = USE_WEBGL_MARBLES ? createWebGLRenderer(canvas) : null;
 
-        // State Tracking (Identity matrix & tunable properties)
         const state = {
-            marbles: [
-                {
-                    x: window.innerWidth / 2 - 50,
-                    y: window.innerHeight / 2 + 200,
-                    z: 150, r: 60, mass: 60 ** 3,
-                    glassColor: [0.85, 0.96, 0.98], // #90e0ef (Soft Sea Blue)
-                    coreColor: [0.00, 0.47, 0.71],  // #0077b6 (Deep Indigo)
-                    vx: 0.1, vy: -5.0, vz: 0, q: [1, 0, 0, 0],
-                    matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-                    isDragging: false
-                },
-                {
-                    x: window.innerWidth / 2 + 50,
-                    y: window.innerHeight / 2 + 100,
-                    z: 220, r: 40, mass: 40 ** 3,
-                    glassColor: [1.00, 0.91, 0.70], // #ffb703 (Bright Gold)
-                    coreColor: [1.00, 0.42, 0.21],  // #ff6b35 (Warm Orange)
-                    vx: 0.2, vy: -3.0, vz: 0, q: [1, 0, 0, 0],
-                    matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
-                    isDragging: false
-                }
-            ],
-            mouseX: 0, mouseY: 0, draggedIdx: -1, dragOffsetX: 0, dragOffsetY: 0,
-            settleFrames: 10, width: window.innerWidth, height: window.innerHeight
+            marbles: [],
+            mouseX: 0,
+            mouseY: 0,
+            draggedIdx: -1,
+            dragOffsetX: 0,
+            dragOffsetY: 0,
+            settleFrames: 60,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            longPressTimer: null,
+            pressStart: null,
+            dragSample: null,
+            infoIdx: -1
         };
 
-        // Resize Tracking.
+        const targetEls = new Map();
+        const beadEls = new Map();
+        const FLOW_ORDER = ['qian', 'xun', 'kan', 'gen', 'kun', 'zhen', 'li', 'dui'];
+
+        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+        function baseRadius(width = state.width, height = state.height) {
+            return clamp(Math.min(width, height) * 0.052, 28, 44);
+        }
+
+        function targetGeometry() {
+            const minDim = Math.min(state.width, state.height);
+            const ring = clamp(minDim * 0.34, 110, Math.min(state.width / 2 - 76, state.height / 2 - 92, 330));
+            return {
+                cx: state.width / 2,
+                cy: state.height / 2,
+                ring: Math.max(96, ring),
+                imageSize: Math.round(Math.max(96, ring) * 2.56)
+            };
+        }
+
+        function targetPosition(m) {
+            const g = targetGeometry();
+            if (m.ux !== undefined && m.uy !== undefined) {
+                return {
+                    x: g.cx + (m.ux - 0.5) * g.imageSize,
+                    y: g.cy + (m.uy - 0.5) * g.imageSize
+                };
+            }
+            return {
+                x: g.cx + m.dx * g.ring,
+                y: g.cy + m.dy * g.ring
+            };
+        }
+
+        function startPosition(index) {
+            const layout = [
+                [0.16, 0.76], [0.29, 0.86], [0.42, 0.78], [0.55, 0.88],
+                [0.70, 0.78], [0.20, 0.16], [0.76, 0.14], [0.88, 0.24]
+            ];
+            const [nx, ny] = layout[index] || [0.5, 0.5];
+            return {
+                x: clamp(state.width * nx, 44, state.width - 44),
+                y: clamp(state.height * ny, 44, state.height - 44)
+            };
+        }
+
+        function createMarble(bead, index) {
+            const r = baseRadius() + (index % 3 - 1) * 2;
+            const p = startPosition(index);
+            return {
+                ...bead,
+                x: p.x,
+                y: p.y,
+                z: r + 24,
+                r,
+                sizeOffset: (index % 3 - 1) * 2,
+                mass: r ** 3,
+                vx: 0,
+                vy: 0,
+                vz: 0,
+                releaseVX: 0,
+                releaseVY: 0,
+                q: [1, 0, 0, 0],
+                matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                isDragging: false,
+                locked: false,
+                activated: false,
+                nearTarget: false
+            };
+        }
+
+        state.marbles = HEART_BEADS.map(createMarble);
+
+        function buildBeads() {
+            beadLayer.replaceChildren();
+            HEART_BEADS.forEach(bead => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bead';
+                wrapper.dataset.id = bead.id;
+                wrapper.style.setProperty('--accent', bead.accent);
+
+                const img = document.createElement('img');
+                img.src = bead.asset;
+                img.alt = bead.name;
+                img.draggable = false;
+
+                wrapper.append(img);
+                beadLayer.append(wrapper);
+                beadEls.set(bead.id, wrapper);
+            });
+        }
+
+        function buildTargets() {
+            targetLayer.replaceChildren();
+            HEART_BEADS.forEach(bead => {
+                const slot = document.createElement('div');
+                slot.className = 'target-slot';
+                slot.dataset.id = bead.id;
+                slot.style.setProperty('--accent', bead.accent);
+                slot.setAttribute('aria-label', `${bead.palace}宮 ${bead.name}`);
+
+                const glyph = document.createElement('div');
+                glyph.className = 'target-glyph';
+
+                const palace = document.createElement('div');
+                palace.className = 'target-palace';
+                palace.textContent = bead.palace;
+
+                const name = document.createElement('div');
+                name.className = 'target-name';
+                name.textContent = bead.shortName;
+
+                glyph.append(palace, name);
+                slot.append(glyph);
+                targetLayer.append(slot);
+                targetEls.set(bead.id, slot);
+            });
+        }
+
+        function syncTargetState() {
+            const g = targetGeometry();
+            const slotSize = clamp(baseRadius() * 2.34, 78, 104);
+            const baguaImageSize = g.imageSize;
+            targetLayer.style.setProperty('--slot-size', `${Math.round(slotSize)}px`);
+            baguaRing.style.width = `${Math.round(g.ring * 2)}px`;
+            baguaRing.style.height = `${Math.round(g.ring * 2)}px`;
+            centerBaguaWrap.style.width = `${baguaImageSize}px`;
+            centerBaguaWrap.style.height = `${baguaImageSize}px`;
+
+            state.marbles.forEach((m, index) => {
+                const el = targetEls.get(m.id);
+                if (!el) return;
+                const p = targetPosition(m);
+                el.style.left = `${p.x}px`;
+                el.style.top = `${p.y}px`;
+                el.classList.toggle('active', m.activated);
+                el.classList.toggle('near', index === state.draggedIdx && m.nearTarget);
+            });
+            syncFlowState();
+        }
+
+        function flowCurvePath(points) {
+            if (points.length < 3) return '';
+            const tension = 0.94;
+            const scale = tension / 6;
+            const fmt = n => Number(n.toFixed(2));
+            let d = `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+
+            for (let i = 0; i < points.length; i++) {
+                const p0 = points[(i - 1 + points.length) % points.length];
+                const p1 = points[i];
+                const p2 = points[(i + 1) % points.length];
+                const p3 = points[(i + 2) % points.length];
+                const c1 = {
+                    x: p1.x + (p2.x - p0.x) * scale,
+                    y: p1.y + (p2.y - p0.y) * scale
+                };
+                const c2 = {
+                    x: p2.x - (p3.x - p1.x) * scale,
+                    y: p2.y - (p3.y - p1.y) * scale
+                };
+                d += ` C ${fmt(c1.x)} ${fmt(c1.y)}, ${fmt(c2.x)} ${fmt(c2.y)}, ${fmt(p2.x)} ${fmt(p2.y)}`;
+            }
+
+            return `${d} Z`;
+        }
+
+        function syncFlowState() {
+            const byId = new Map(state.marbles.map(m => [m.id, m]));
+            const points = FLOW_ORDER
+                .map(id => byId.get(id))
+                .filter(Boolean)
+                .map(m => targetPosition(m));
+            const d = flowCurvePath(points);
+            flowPathAura.setAttribute('d', d);
+            flowPathHaze.setAttribute('d', d);
+            flowPath.setAttribute('d', d);
+            flowPathStream.setAttribute('d', d);
+            flowPathStreamSecondary.setAttribute('d', d);
+            flowLayer.classList.toggle('complete', state.marbles.every(m => m.activated));
+        }
+
+        function syncBeadVisuals() {
+            state.marbles.forEach((m, index) => {
+                const el = beadEls.get(m.id);
+                if (!el) return;
+                const size = Math.round(m.r * 2.28);
+                el.style.left = `${m.x}px`;
+                el.style.top = `${m.y}px`;
+                el.style.width = `${size}px`;
+                el.style.height = `${size}px`;
+                el.style.zIndex = `${100 + Math.round(m.z) + index}`;
+                el.classList.toggle('activated', m.activated);
+                el.classList.toggle('dragging', m.isDragging);
+            });
+        }
+
         function resize() {
             const oldWidth = state.width;
             const oldHeight = state.height;
             const newWidth = window.innerWidth;
             const newHeight = window.innerHeight;
+            const scaleX = oldWidth > 0 ? newWidth / oldWidth : 1;
+            const scaleY = oldHeight > 0 ? newHeight / oldHeight : 1;
 
             state.width = newWidth;
             state.height = newHeight;
-            state.settleFrames = 2; // Trigger re-render on resize
+            state.settleFrames = 24;
 
-            // Rescale marble coordinates proportionally to the screen size change
-            if (oldWidth > 0 && oldHeight > 0) {
-                const scaleX = newWidth / oldWidth;
-                const scaleY = newHeight / oldHeight;
-                state.marbles.forEach(m => {
-                    m.x = Math.max(m.r, Math.min(newWidth - m.r, m.x * scaleX));
-                    m.y = Math.max(m.r, Math.min(newHeight - m.r, m.y * scaleY));
-                });
-            }
+            appWrapper.style.width = `${newWidth}px`;
+            appWrapper.style.height = `${newHeight}px`;
 
-            // Dynamically size the app wrapper to match the exact window inner dimensions
-            const appWrapper = document.getElementById('app-wrapper');
-            if (appWrapper) {
-                appWrapper.style.width = `${newWidth}px`;
-                appWrapper.style.height = `${newHeight}px`;
-            }
+            state.marbles.forEach(m => {
+                m.r = baseRadius() + m.sizeOffset;
+                m.mass = m.r ** 3;
 
+                if (m.locked || m.activated) {
+                    const target = targetPosition(m);
+                    m.x = target.x;
+                    m.y = target.y;
+                    m.z = m.r + 20;
+                    m.vx = 0;
+                    m.vy = 0;
+                    m.vz = 0;
+                } else {
+                    m.x = clamp(m.x * scaleX, m.r, newWidth - m.r);
+                    m.y = clamp(m.y * scaleY, m.r, newHeight - m.r);
+                }
+            });
 
             const dpr = window.devicePixelRatio || 1;
-
-            // Keep main canvas size set to scaled resolution (state.width / dpr)
-            // This reduces the texture resolution on smartphones with high DPR to optimize performance without notice.
             canvas.width = Math.min(Math.round(state.width), 2048);
             canvas.height = Math.min(Math.round(state.height), 2048);
-
-            // Set helper canvas sizes in logical CSS coordinates to scale down textures
             canvasRefract.width = Math.min(Math.round(state.width / 2), 1024);
             canvasRefract.height = Math.min(Math.round(state.height / 2), 1024);
-
             canvasReflect.width = Math.min(Math.round(state.width / 4), 512);
             canvasReflect.height = Math.min(Math.round(state.height / 4), 512);
-
             canvasShadow.width = Math.min(Math.round(state.width / 4 / dpr), 512);
             canvasShadow.height = Math.min(Math.round(state.height / 4 / dpr), 512);
 
-            // Force the SVG filter coordinate system to match CSS space
             const filterEl = document.getElementById('marble-filter');
             if (filterEl) {
                 filterEl.setAttribute('width', newWidth);
                 filterEl.setAttribute('height', newHeight);
             }
 
-            // Match the feImage inputs to the CSS bounds
-            const images = ['displaceRefract', 'displaceReflect', 'shadowMap'];
-            images.forEach(id => {
+            ['displaceRefract', 'displaceReflect', 'shadowMap'].forEach(id => {
                 const img = document.getElementById(id);
                 if (img) {
                     img.setAttribute('width', newWidth);
                     img.setAttribute('height', newHeight);
                 }
             });
+
+            syncTargetState();
+            syncBeadVisuals();
+            if (state.infoIdx !== -1) positionInfoPanel(state.marbles[state.infoIdx]);
         }
+
+        buildBeads();
+        buildTargets();
         window.addEventListener('resize', resize);
         resize();
 
-        // Mouse interactions
-
-        // Bulletproof coordinate extractor for both mouse and mobile touch inputs
         function getEventCoords(e, containerElement) {
             const rect = containerElement.getBoundingClientRect();
-            let clientX, clientY;
+            let clientX;
+            let clientY;
 
-            // Check if it's a touch event
             if (e.touches !== undefined) {
-                // Use active touches first, fall back to changedTouches (crucial for touchend), then targetTouches
                 const touch = e.touches[0] || e.changedTouches[0] || e.targetTouches[0];
+                if (!touch) return { x: state.mouseX, y: state.mouseY };
                 clientX = touch.clientX;
                 clientY = touch.clientY;
             } else {
-                // Standard mouse fallback
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
@@ -705,70 +1521,273 @@
             };
         }
 
-        // Unified Start Handler (mousedown & touchstart)
-        const handleStart = (e) => {
-            AudioFX.init();
-            const { x: mouseX, y: mouseY } = getEventCoords(e, container);
-
+        function findMarbleAt(x, y) {
             let hitIdx = -1;
             for (let i = 0; i < state.marbles.length; i++) {
                 const m = state.marbles[i];
-                if (Math.hypot(mouseX - m.x, mouseY - m.y) < m.r) {
+                if (Math.hypot(x - m.x, y - m.y) < m.r * 1.18) {
                     if (hitIdx === -1 || m.z > state.marbles[hitIdx].z) hitIdx = i;
                 }
             }
+            return hitIdx;
+        }
 
-            if (hitIdx !== -1) {
-                if (e.cancelable) e.preventDefault();
-
-                state.draggedIdx = hitIdx;
-                state.marbles[hitIdx].isDragging = true;
-                state.dragOffsetX = mouseX - state.marbles[hitIdx].x;
-                state.dragOffsetY = mouseY - state.marbles[hitIdx].y;
-
-                // Lock immediate tracked coordinates to the tap position to prevent an initial jump frame
-                state.mouseX = mouseX;
-                state.mouseY = mouseY;
+        function clearLongPressTimer() {
+            if (state.longPressTimer) {
+                window.clearTimeout(state.longPressTimer);
+                state.longPressTimer = null;
             }
+        }
+
+        function showInfoPanel(index) {
+            const m = state.marbles[index];
+            if (!m) return;
+            state.infoIdx = index;
+            infoPanel.style.setProperty('--accent', m.accent);
+            infoPalace.textContent = '';
+            infoTitle.textContent = m.panelTitle;
+            infoBody.textContent = m.text;
+            infoPanel.hidden = false;
+            statusText.textContent = '';
+            requestAnimationFrame(() => positionInfoPanel(m));
+        }
+
+        function hideInfoPanel() {
+            state.infoIdx = -1;
+            infoPanel.hidden = true;
+        }
+
+        function positionInfoPanel(m) {
+            if (!m || infoPanel.hidden) return;
+            const gap = 18;
+            const pad = 16;
+            const panelWidth = infoPanel.offsetWidth || 292;
+            const panelHeight = infoPanel.offsetHeight || 140;
+            let left = m.x + m.r + gap;
+            let top = m.y - panelHeight / 2;
+
+            if (left + panelWidth > state.width - pad) {
+                left = m.x - m.r - gap - panelWidth;
+            }
+
+            if (left < pad) {
+                left = clamp(m.x - panelWidth / 2, pad, state.width - panelWidth - pad);
+                top = m.y + m.r + gap;
+            }
+
+            top = clamp(top, pad, state.height - panelHeight - pad);
+            infoPanel.style.left = `${left}px`;
+            infoPanel.style.top = `${top}px`;
+        }
+
+        function triggerActivation(m) {
+            const p = targetPosition(m);
+            const burst = document.createElement('div');
+            burst.className = `activation-burst${m.id === 'dui' ? ' pink-burst' : ''}`;
+            burst.style.left = `${p.x}px`;
+            burst.style.top = `${p.y}px`;
+            burst.style.setProperty('--accent', m.accent);
+
+            for (let i = 0; i < 8; i++) {
+                const spark = document.createElement('span');
+                spark.className = 'spark';
+                spark.style.setProperty('--angle', `${i * 45}deg`);
+                burst.append(spark);
+            }
+
+            activationLayer.append(burst);
+            window.setTimeout(() => burst.remove(), 1300);
+            AudioFX.play(m.id === 'dui' ? 7.2 : 5.4, m.r);
+        }
+
+        function updateActivationStatus(m) {
+            statusText.textContent = '';
+        }
+
+        function checkActivation(m) {
+            const p = targetPosition(m);
+            const distance = Math.hypot(m.x - p.x, m.y - p.y);
+            const snapDistance = Math.max(m.r * 1.35, 58);
+            m.nearTarget = distance <= snapDistance * 1.18;
+
+            if (distance <= snapDistance) {
+                const wasActivated = m.activated;
+                m.x = p.x;
+                m.y = p.y;
+                m.z = m.r + 22;
+                m.vx = 0;
+                m.vy = 0;
+                m.vz = 0;
+                m.locked = true;
+                m.activated = true;
+                state.settleFrames = 28;
+
+                if (!wasActivated) triggerActivation(m);
+                updateActivationStatus(m);
+                syncTargetState();
+                return true;
+            }
+
+            if (m.activated && distance > snapDistance * 1.45) {
+                m.activated = false;
+                m.locked = false;
+                state.settleFrames = 16;
+            }
+
+            syncTargetState();
+            return false;
+        }
+
+        function applyDragPosition(m) {
+            const tx = state.mouseX - state.dragOffsetX;
+            const ty = state.mouseY - state.dragOffsetY;
+            m.vx = tx - m.x;
+            m.vy = ty - m.y;
+            m.x = tx;
+            m.y = ty;
+
+            const targetZ = Math.max(158, m.r + 112);
+            m.vz = (targetZ - m.z) * 0.15;
+            m.z += m.vz;
+        }
+
+        function updateReleaseVelocity(m, x, y) {
+            const now = performance.now();
+            if (state.dragSample) {
+                const dt = Math.max(now - state.dragSample.t, 8);
+                const frameScale = 16.67 / dt;
+                m.releaseVX = clamp((x - state.dragSample.x) * frameScale, -42, 42);
+                m.releaseVY = clamp((y - state.dragSample.y) * frameScale, -42, 42);
+            }
+            state.dragSample = { x, y, t: now };
+        }
+
+        function applyReleaseVelocity(m) {
+            if (m.locked || m.activated) return;
+            m.vx = m.releaseVX || m.vx;
+            m.vy = m.releaseVY || m.vy;
+            m.vz = Math.max(m.vz, 3.5);
+            state.settleFrames = 36;
+        }
+
+        const handleStart = (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
+            AudioFX.init();
+            const { x: mouseX, y: mouseY } = getEventCoords(e, container);
+            const hitIdx = findMarbleAt(mouseX, mouseY);
+
+            if (hitIdx === -1) {
+                clearLongPressTimer();
+                hideInfoPanel();
+                return;
+            }
+
+            if (e.cancelable) e.preventDefault();
+
+            const m = state.marbles[hitIdx];
+            state.draggedIdx = hitIdx;
+            state.dragOffsetX = mouseX - m.x;
+            state.dragOffsetY = mouseY - m.y;
+            state.mouseX = mouseX;
+            state.mouseY = mouseY;
+            state.pressStart = { x: mouseX, y: mouseY, index: hitIdx };
+            state.dragSample = { x: mouseX, y: mouseY, t: performance.now() };
+
+            m.isDragging = true;
+            m.locked = false;
+            m.nearTarget = false;
+            m.releaseVX = 0;
+            m.releaseVY = 0;
+
+            clearLongPressTimer();
+            state.longPressTimer = window.setTimeout(() => {
+                state.longPressTimer = null;
+                showInfoPanel(hitIdx);
+            }, 560);
         };
 
-        // Unified Move Handler (mousemove & touchmove)
         const handleMove = (e) => {
-            // Only capture coordinates if we have active touches or it's a mouse move
             if (e.touches && e.touches.length === 0) return;
-
             const { x: mouseX, y: mouseY } = getEventCoords(e, container);
-
             state.mouseX = mouseX;
             state.mouseY = mouseY;
 
-            if (state.draggedIdx !== -1 && e.cancelable) {
-                e.preventDefault();
+            if (state.pressStart && Math.hypot(mouseX - state.pressStart.x, mouseY - state.pressStart.y) > 10) {
+                clearLongPressTimer();
             }
-        };
 
-        // Unified End Drag Handler (mouseup, mouseleave, touchend, touchcancel)
-        const endDrag = () => {
             if (state.draggedIdx !== -1) {
-                state.marbles[state.draggedIdx].isDragging = false;
-                state.draggedIdx = -1;
+                const m = state.marbles[state.draggedIdx];
+                updateReleaseVelocity(m, mouseX, mouseY);
+                applyDragPosition(m);
+                checkActivation(m);
+                syncTargetState();
+                if (e.cancelable) e.preventDefault();
             }
         };
 
-        // Event bindings remain the same
-        window.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('mouseup', endDrag);
-        window.addEventListener('mouseleave', endDrag);
+        const endDrag = () => {
+            clearLongPressTimer();
+            state.pressStart = null;
+            state.dragSample = null;
 
-        window.addEventListener('touchstart', handleStart, { passive: false });
-        window.addEventListener('touchmove', handleMove, { passive: false });
-        window.addEventListener('touchend', endDrag);
-        window.addEventListener('touchcancel', endDrag);
+            if (state.draggedIdx !== -1) {
+                const m = state.marbles[state.draggedIdx];
+                applyDragPosition(m);
+                m.isDragging = false;
+                const activated = checkActivation(m);
+                if (!activated) applyReleaseVelocity(m);
+                state.draggedIdx = -1;
+                syncTargetState();
+            }
+        };
 
+        const handleDoubleClick = (e) => {
+            const { x, y } = getEventCoords(e, container);
+            const hitIdx = findMarbleAt(x, y);
+            if (hitIdx === -1) return;
+            if (e.cancelable) e.preventDefault();
+            clearLongPressTimer();
+            showInfoPanel(hitIdx);
+        };
 
+        let activePointerId = null;
+        const handlePointerStart = (e) => {
+            handleStart(e);
+            activePointerId = state.draggedIdx === -1 ? null : e.pointerId;
+        };
+        const handlePointerMove = (e) => {
+            if (activePointerId !== null && e.pointerId !== activePointerId) return;
+            handleMove(e);
+        };
+        const handlePointerEnd = (e) => {
+            if (activePointerId !== null && e.pointerId !== activePointerId) return;
+            activePointerId = null;
+            endDrag();
+        };
 
-        // 3D Quaternion/Rotor Math
+        if (window.PointerEvent) {
+            window.addEventListener('pointerdown', handlePointerStart, { passive: false });
+            window.addEventListener('pointermove', handlePointerMove, { passive: false });
+            window.addEventListener('pointerup', handlePointerEnd);
+            window.addEventListener('pointercancel', handlePointerEnd);
+            window.addEventListener('pointerleave', handlePointerEnd);
+        } else {
+            window.addEventListener('mousedown', handleStart);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('mouseleave', endDrag);
+            window.addEventListener('touchstart', handleStart, { passive: false });
+            window.addEventListener('touchmove', handleMove, { passive: false });
+            window.addEventListener('touchend', endDrag);
+            window.addEventListener('touchcancel', endDrag);
+        }
+        window.addEventListener('dblclick', handleDoubleClick);
+        window.addEventListener('contextmenu', (e) => {
+            const { x, y } = getEventCoords(e, container);
+            if (findMarbleAt(x, y) !== -1) e.preventDefault();
+        });
+
         const qMul = ([w1, x1, y1, z1], [w2, x2, y2, z2]) => {
             const w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
             const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
@@ -777,13 +1796,13 @@
             const l = Math.sqrt(w * w + x * x + y * y + z * z);
             return [w / l, x / l, y / l, z / l];
         };
+
         const qToMat = ([w, x, y, z]) => [
             1 - 2 * y * y - 2 * z * z, 2 * x * y + 2 * w * z, 2 * x * z - 2 * w * y,
             2 * x * y - 2 * w * z, 1 - 2 * x * x - 2 * z * z, 2 * y * z + 2 * w * x,
             2 * x * z + 2 * w * y, 2 * y * z - 2 * w * x, 1 - 2 * x * x - 2 * y * y
         ];
 
-        // Procedural Audio Engine
         const AudioFX = {
             ctx: null,
             init() {
@@ -799,172 +1818,162 @@
                 if (this.ctx.state === 'suspended') return;
 
                 const now = this.ctx.currentTime;
-                // Deeper base frequency (warm glass/marble range: 800Hz - 1200Hz)
-                const baseFreq = 800 + (60 - radius) * 20;
-
+                const baseFreq = 860 + (44 - radius) * 18;
                 const masterGain = this.ctx.createGain();
                 masterGain.connect(this.ctx.destination);
 
-                const maxVol = Math.min(speed * 0.05, 0.25);
+                const maxVol = Math.min(speed * 0.045, 0.23);
                 masterGain.gain.setValueAtTime(0, now);
-                masterGain.gain.linearRampToValueAtTime(maxVol, now + 0.001); // Instant strike
-                masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045); // Extremely short decay (45ms max)
+                masterGain.gain.linearRampToValueAtTime(maxVol, now + 0.001);
+                masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
-                // 1. Warmer, Less Tonal Impact Transient (Triangle sweep from 5kHz to 80Hz in 4ms)
                 const clickOsc = this.ctx.createOscillator();
                 const clickGain = this.ctx.createGain();
                 clickOsc.type = 'triangle';
-                clickOsc.frequency.setValueAtTime(5000, now);
-                clickOsc.frequency.exponentialRampToValueAtTime(80, now + 0.004);
-
-                clickGain.gain.setValueAtTime(0.7, now); // Prominent physical impact tick
-                clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.004);
-
+                clickOsc.frequency.setValueAtTime(4200, now);
+                clickOsc.frequency.exponentialRampToValueAtTime(110, now + 0.006);
+                clickGain.gain.setValueAtTime(0.55, now);
+                clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.008);
                 clickOsc.connect(clickGain);
                 clickGain.connect(masterGain);
-
                 clickOsc.start(now);
-                clickOsc.stop(now + 0.008);
+                clickOsc.stop(now + 0.012);
 
-                // 2. High-Frequency Glass Body Resonance Partials (super-tight micro decays)
-                const partials = [
-                    { ratio: 1.00, gain: 0.25, decay: 0.02 }, // Extremely fast dampening
-                    { ratio: 1.60, gain: 0.18, decay: 0.01 },
-                    { ratio: 2.20, gain: 0.14, decay: 0.007 },
-                    { ratio: 3.10, gain: 0.10, decay: 0.005 },
-                    { ratio: 4.40, gain: 0.06, decay: 0.003 }
-                ];
-
-                partials.forEach(p => {
+                [
+                    { ratio: 1.00, gain: 0.22, decay: 0.05 },
+                    { ratio: 1.50, gain: 0.15, decay: 0.035 },
+                    { ratio: 2.12, gain: 0.10, decay: 0.026 },
+                    { ratio: 3.00, gain: 0.07, decay: 0.018 }
+                ].forEach(p => {
                     const osc = this.ctx.createOscillator();
                     const partialGain = this.ctx.createGain();
-
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(baseFreq * p.ratio, now);
-
                     osc.connect(partialGain);
                     partialGain.connect(masterGain);
-
                     partialGain.gain.setValueAtTime(p.gain, now);
                     partialGain.gain.exponentialRampToValueAtTime(0.001, now + p.decay);
-
                     osc.start(now);
-                    osc.stop(now + 0.035);
+                    osc.stop(now + 0.08);
                 });
             }
         };
 
-        // Bouncing, elastic collision, and rolling physics simulation
+        function inverseMass(m) {
+            return (m.isDragging || m.locked) ? 0 : 1 / m.mass;
+        }
+
+        function resolvePair(m1, m2) {
+            const dx = m1.x - m2.x;
+            const dy = m1.y - m2.y;
+            const dz = m1.z - m2.z;
+            const minDist = m1.r + m2.r + 1;
+            const distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq >= minDist * minDist) return;
+
+            const dist = Math.max(Math.sqrt(distSq), 0.0001);
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const nz = dz / dist;
+            const inv1 = inverseMass(m1);
+            const inv2 = inverseMass(m2);
+            const invTotal = inv1 + inv2;
+            if (invTotal === 0) return;
+
+            const overlap = minDist - dist;
+            if (inv1 > 0) {
+                const ratio = inv1 / invTotal;
+                m1.x += nx * overlap * ratio;
+                m1.y += ny * overlap * ratio;
+                m1.z += nz * overlap * ratio;
+            }
+            if (inv2 > 0) {
+                const ratio = inv2 / invTotal;
+                m2.x -= nx * overlap * ratio;
+                m2.y -= ny * overlap * ratio;
+                m2.z -= nz * overlap * ratio;
+            }
+
+            const relVx = m1.vx - m2.vx;
+            const relVy = m1.vy - m2.vy;
+            const relVz = m1.vz - m2.vz;
+            const velAlongNormal = relVx * nx + relVy * ny + relVz * nz;
+            if (velAlongNormal >= 0) return;
+
+            if (velAlongNormal < -0.28) {
+                AudioFX.play(Math.abs(velAlongNormal), Math.min(m1.r, m2.r));
+            }
+
+            const restitution = 0.78;
+            const j = -(1 + restitution) * velAlongNormal / invTotal;
+            const impulseX = j * nx;
+            const impulseY = j * ny;
+            const impulseZ = j * nz;
+
+            if (inv1 > 0) {
+                m1.vx += impulseX * inv1;
+                m1.vy += impulseY * inv1;
+                m1.vz += impulseZ * inv1;
+            }
+            if (inv2 > 0) {
+                m2.vx -= impulseX * inv2;
+                m2.vy -= impulseY * inv2;
+                m2.vz -= impulseZ * inv2;
+            }
+        }
+
         function updatePhysics() {
-            // 1. Integration (Gravity, Movement, and Dragging)
             state.marbles.forEach(m => {
                 if (m.isDragging) {
-                    const tx = state.mouseX - state.dragOffsetX;
-                    const ty = state.mouseY - state.dragOffsetY;
-                    m.vx = tx - m.x;
-                    m.vy = ty - m.y;
-                    m.x = tx;
-                    m.y = ty;
-
-                    const targetZ = 200; // Lift off ground when dragged
-                    m.vz = (targetZ - m.z) * 0.15;
+                    applyDragPosition(m);
+                    checkActivation(m);
+                } else if (m.locked) {
+                    const p = targetPosition(m);
+                    m.vx = (p.x - m.x) * 0.12;
+                    m.vy = (p.y - m.y) * 0.12;
+                    m.vz = (m.r + 22 - m.z) * 0.12;
+                    m.x += m.vx;
+                    m.y += m.vy;
                     m.z += m.vz;
+                    m.vx *= 0.72;
+                    m.vy *= 0.72;
+                    m.vz *= 0.72;
                 } else {
-                    m.vz -= 0.8; // Gravity
-
-                    // Air/Rolling friction
+                    m.vz -= 0.8;
                     m.vx *= 0.99;
                     m.vy *= 0.99;
                     m.vz *= 0.995;
-
                     m.x += m.vx;
                     m.y += m.vy;
                     m.z += m.vz;
                 }
             });
 
-            // 2. Marble-Marble Collision Resolution
-            const [m1, m2] = state.marbles;
-            const dx = m1.x - m2.x, dy = m1.y - m2.y, dz = m1.z - m2.z;
-            const distSq = dx * dx + dy * dy + dz * dz;
-            const minDist = m1.r + m2.r + 1;
-
-            if (distSq < minDist * minDist) {
-                const dist = Math.sqrt(distSq);
-                if (dist > 0.0001) {
-                    const nx = dx / dist, ny = dy / dist, nz = dz / dist;
-                    const overlap = minDist - dist;
-
-                    // Positional Correction: Push apart weighted by mass
-                    const totalMass = m1.mass + m2.mass;
-                    const m1Ratio = m2.mass / totalMass; // Heavier marble moves less
-                    const m2Ratio = m1.mass / totalMass;
-
-                    if (!m1.isDragging && !m2.isDragging) {
-                        m1.x += nx * overlap * m1Ratio; m1.y += ny * overlap * m1Ratio; m1.z += nz * overlap * m1Ratio;
-                        m2.x -= nx * overlap * m2Ratio; m2.y -= ny * overlap * m2Ratio; m2.z -= nz * overlap * m2Ratio;
-                    } else if (!m1.isDragging) {
-                        m1.x += nx * overlap; m1.y += ny * overlap; m1.z += nz * overlap;
-                    } else if (!m2.isDragging) {
-                        m2.x -= nx * overlap; m2.y -= ny * overlap; m2.z -= nz * overlap;
-                    }
-
-                    // Velocity Impulse: Standard 3D Elastic Collision
-                    const relVx = m1.vx - m2.vx;
-                    const relVy = m1.vy - m2.vy;
-                    const relVz = m1.vz - m2.vz;
-                    const velAlongNormal = relVx * nx + relVy * ny + relVz * nz;
-
-                    // CRITICAL FIX: Only resolve if they are actively moving towards each other
-                    if (velAlongNormal < 0) {
-                        if (velAlongNormal < -0.2) {
-                            AudioFX.play(Math.abs(velAlongNormal), Math.min(m1.r, m2.r));
-                        }
-                        const restitution = 0.8; // Bounciness
-                        const j = -(1 + restitution) * velAlongNormal / (1 / m1.mass + 1 / m2.mass);
-
-                        const impulseX = j * nx;
-                        const impulseY = j * ny;
-                        const impulseZ = j * nz;
-
-                        if (!m1.isDragging) {
-                            m1.vx += impulseX / m1.mass;
-                            m1.vy += impulseY / m1.mass;
-                            m1.vz += impulseZ / m1.mass;
-                        }
-                        if (!m2.isDragging) {
-                            m2.vx -= impulseX / m2.mass;
-                            m2.vy -= impulseY / m2.mass;
-                            m2.vz -= impulseZ / m2.mass;
-                        }
-                    }
+            for (let i = 0; i < state.marbles.length; i++) {
+                for (let j = i + 1; j < state.marbles.length; j++) {
+                    resolvePair(state.marbles[i], state.marbles[j]);
                 }
             }
 
-            // 3. Environment Constraints (Must happen AFTER marble collisions)
             state.marbles.forEach(m => {
-                if (!m.isDragging) {
-                    // Floor Collision
+                if (!m.isDragging && !m.locked) {
                     if (m.z < m.r) {
                         m.z = m.r;
-                        // CRITICAL FIX: Threshold to stop micro-bounces
                         if (m.vz < -2.0) {
                             AudioFX.play(Math.abs(m.vz) * 0.7, m.r);
                             m.vz *= -0.55;
                         } else {
-                            m.vz = 0; // True rest state
-                            m.vx *= 0.99; // Added ground friction
+                            m.vz = 0;
+                            m.vx *= 0.99;
                             m.vy *= 0.99;
                         }
                     }
 
-                    // Wall Collisions
                     if (m.x < m.r) {
                         if (Math.abs(m.vx) > 0.5) AudioFX.play(Math.abs(m.vx) * 0.7, m.r);
                         m.x = m.r;
                         m.vx *= -0.8;
-                    }
-                    else if (m.x > state.width - m.r) {
+                    } else if (m.x > state.width - m.r) {
                         if (Math.abs(m.vx) > 0.5) AudioFX.play(Math.abs(m.vx) * 0.7, m.r);
                         m.x = state.width - m.r;
                         m.vx *= -0.8;
@@ -974,15 +1983,13 @@
                         if (Math.abs(m.vy) > 0.5) AudioFX.play(Math.abs(m.vy) * 0.7, m.r);
                         m.y = m.r;
                         m.vy *= -0.8;
-                    }
-                    else if (m.y > state.height - m.r) {
+                    } else if (m.y > state.height - m.r) {
                         if (Math.abs(m.vy) > 0.5) AudioFX.play(Math.abs(m.vy) * 0.7, m.r);
                         m.y = state.height - m.r;
                         m.vy *= -0.8;
                     }
                 }
 
-                // 4. Visual Rolling (Quaternion Update)
                 const speedXYSq = m.vx * m.vx + m.vy * m.vy;
                 if (speedXYSq > 0.0001) {
                     const speedXY = Math.sqrt(speedXYSq);
@@ -998,16 +2005,15 @@
         const displaceRefract = document.getElementById('displaceRefract');
         const displaceReflect = document.getElementById('displaceReflect');
         const shadowMap = document.getElementById('shadowMap');
-
-        const MARBLE_COUNT = 2;
+        const MARBLE_COUNT = HEART_BEADS.length;
         const posData = new Float32Array(MARBLE_COUNT * 3);
         const radiiData = new Float32Array(MARBLE_COUNT);
         const glassData = new Float32Array(MARBLE_COUNT * 3);
         const coreData = new Float32Array(MARBLE_COUNT * 3);
         const matsData = new Float32Array(MARBLE_COUNT * 9);
 
-        function updateFeImageWithCanvas(feImage, canvas) {
-            const dataurl = canvas.toDataURL('image/png', 1.0);
+        function updateFeImageWithCanvas(feImage, sourceCanvas) {
+            const dataurl = sourceCanvas.toDataURL('image/png', 1.0);
             feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataurl);
         }
 
@@ -1016,11 +2022,10 @@
             updateFeImageWithCanvas(feImage, renderer.canvas);
         }
 
-        // Render Loop
-        function loop(_t) {
+        function loop(t) {
             updatePhysics();
+            syncBeadVisuals();
 
-            // Check if marbles are moving or dragging (with settle frames)
             let isMoving = false;
             state.marbles.forEach(m => {
                 if (m.isDragging || (m.vx * m.vx + m.vy * m.vy) > 0.0004 || Math.abs(m.vz) > 0.02) {
@@ -1029,31 +2034,35 @@
             });
 
             if (isMoving) {
-                state.settleFrames = 15; // Settling counter
+                state.settleFrames = 15;
             } else if (state.settleFrames > 0) {
                 state.settleFrames--;
                 isMoving = true;
             }
 
-            if (isMoving) {
+            if (state.draggedIdx !== -1) syncTargetState();
+            if (state.infoIdx !== -1) positionInfoPanel(state.marbles[state.infoIdx]);
+
+            if (isMoving && refractRenderer && reflectRenderer && shadowRenderer && mainRenderer) {
                 state.marbles.forEach((m, i) => {
-                    posData[i * 3] = m.x; posData[i * 3 + 1] = state.height - m.y; posData[i * 3 + 2] = m.z;
+                    const glow = m.activated ? 0.07 : 0;
+                    const pulse = m.activated ? Math.sin(t * 0.006 + i) * 0.025 + 0.025 : 0;
+                    posData[i * 3] = m.x;
+                    posData[i * 3 + 1] = state.height - m.y;
+                    posData[i * 3 + 2] = m.z;
                     radiiData[i] = m.r;
-                    glassData[i * 3] = m.glassColor[0]; glassData[i * 3 + 1] = m.glassColor[1]; glassData[i * 3 + 2] = m.glassColor[2];
-                    coreData[i * 3] = m.coreColor[0]; coreData[i * 3 + 1] = m.coreColor[1]; coreData[i * 3 + 2] = m.coreColor[2];
+                    glassData[i * 3] = Math.min(1, m.glassColor[0] + glow + pulse);
+                    glassData[i * 3 + 1] = Math.min(1, m.glassColor[1] + glow + pulse);
+                    glassData[i * 3 + 2] = Math.min(1, m.glassColor[2] + glow + pulse);
+                    coreData[i * 3] = Math.min(1, m.coreColor[0] + glow);
+                    coreData[i * 3 + 1] = Math.min(1, m.coreColor[1] + glow);
+                    coreData[i * 3 + 2] = Math.min(1, m.coreColor[2] + glow);
                     matsData.set(m.matrix, i * 9);
                 });
 
-                // Pass 0: Refraction displacement (half resolution)
                 renderAndMapPass(refractRenderer, displaceRefract, 0);
-
-                // Pass 1: Reflection displacement (quarter resolution)
                 renderAndMapPass(reflectRenderer, displaceReflect, 1);
-
-                // Pass 3: Shadow Map (quarter resolution)
                 renderAndMapPass(shadowRenderer, shadowMap, 3);
-
-                // Pass 2: Final Overlay (full resolution)
                 mainRenderer.draw(2, state.width, state.height, posData, radiiData, glassData, coreData, matsData);
             }
 

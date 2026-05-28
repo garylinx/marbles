@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="白色心珠">
+  <defs>
+    <radialGradient id="body" cx="35%" cy="27%" r="70%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.34" stop-color="#fff8ea"/>
+      <stop offset="0.68" stop-color="#d9d2bd"/>
+      <stop offset="1" stop-color="#8f8a7a"/>
+    </radialGradient>
+    <radialGradient id="shine" cx="34%" cy="24%" r="31%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="52%" cy="57%" r="54%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="128" cy="128" r="96" fill="url(#body)"/>
+  <circle cx="128" cy="128" r="93" fill="url(#core)"/>
+  <ellipse cx="94" cy="82" rx="34" ry="23" fill="url(#shine)"/>
+</svg>
