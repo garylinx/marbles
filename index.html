@@ -413,12 +413,12 @@
         #content {
             position: absolute;
             left: 50%;
-            top: 50%;
+            top: clamp(22px, 5vh, 54px);
             z-index: 4;
-            width: min(420px, calc(100vw - 48px));
+            width: min(560px, calc(100vw - 36px));
             padding: 0 16px;
             text-align: center;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%);
             pointer-events: none;
         }
 
@@ -426,9 +426,12 @@
             margin: 0;
             color: var(--ink);
             font-size: 42px;
-            font-weight: 800;
+            font-family: "BiauKai", "Kaiti TC", "STKaiti", "KaiTi", "DFKai-SB", serif;
+            font-weight: 700;
             letter-spacing: 0;
-            text-shadow: 0 1px 0 rgba(247, 232, 214, 0.72);
+            text-shadow:
+                0 1px 0 rgba(247, 232, 214, 0.72),
+                0 4px 16px rgba(6, 51, 70, 0.10);
         }
 
         #status-text {
@@ -651,7 +654,7 @@
             }
 
             #content h1 {
-                font-size: 30px;
+                font-size: 32px;
             }
 
             #status-text {
@@ -682,14 +685,14 @@
             <div class="field-surface"></div>
             <div id="center-bagua-wrap" aria-hidden="true">
                 <picture id="center-bagua-picture">
-                    <source media="(max-width: 720px)" srcset="./assets/local-bagua-mobile.png">
+                    <source media="(max-width: 720px)" srcset="./assets/local-bagua-mobile.png?v=2">
                     <img id="center-bagua" src="./assets/local-bagua-transparent.png" alt="">
                 </picture>
             </div>
             <div id="bagua-ring" aria-hidden="true"></div>
             <div id="target-layer" aria-hidden="true"></div>
             <div id="content">
-                <h1>八顆珠</h1>
+                <h1>奇心爻形串珠光</h1>
                 <p id="status-text" aria-live="polite"></p>
             </div>
         </div>
